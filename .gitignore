@@ -1,0 +1,7 @@
+.env
+cert.pem
+key.pem
+sql_app.db
+venv
+.pyc
+__pycache__

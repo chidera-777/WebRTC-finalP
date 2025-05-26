@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat App</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chat_ui.css"> <!-- Added chat UI CSS -->
+</head>
+<body>
+    <header>
+        <h2>My Chat App</h2>
+        <p>Logged in as: <span id="loggedInUser"></span></p>
+    </header>
+    <div class="logout-container">
+        <button id="logoutButton">Logout</button>
+    </div> 
+    <div id="chat-app">
+
+        <div class="main-container">
+            <aside id="chat-list-panel">
+                <div class="chat-list-panel-inner">
+                    <div class="chat-list-header">
+                        <h3>Chats</h3>
+                        <button id="openAddContactModalButton" title="Add New Contact">+</button>
+                    </div>
+                    
+                    <ul id="chatList">
+                        <!-- Chat list items (friends) will be here using JavaScript -->
+                    </ul>
+                    <div id="noChatsMessage" style="display:none; padding:10px; text-align:center;">
+                        No contacts yet. Click '+' to add users.
+                    </div>
+
+                    <div class="chat-list-header" style="margin-top: 20px;">
+                        <h3>Groups</h3>
+                        <button id="openCreateGroupModalButton" title="Create New Group">+</button>
+                    </div>
+                    <ul id="groupList">
+                        <!-- Group list items will be here using JavaScript -->
+                    </ul>
+                     <div id="noGroupsMessage" style="display:none; padding:10px; text-align:center;">
+                        No groups yet. Click '+' to create or join one.
+                    </div>
+
+                </div>
+            </aside>
+
+            <main id="active-chat-panel">
+                <div class="active-chat-panel-inner">
+                    <div id="chat-welcome-screen" style="text-align:center; padding-top: 50px;">
+                        <p>Select a chat to start messaging.</p>
+                    </div>
+                    <div class="hidden current-chat-area">
+                        <div class="active-chat-header">
+                            <span id="activeChatPartnerName"></span>
+                            <div class="call-buttons">
+                                <button id="audioCallButton" title="Start Audio Call">&#128266;</button> <!-- Speaker icon -->
+                                <button id="videoCallButton" title="Start Video Call">&#128249;</button> <!-- Video camera icon -->
+                            </div>
+                        </div>
+                        <div id="chatMessages">
+                            <!-- Messages for the active chat -->
+                        </div>
+                        <form id="chatForm">
+                            <input type="text" id="chatInput" placeholder="Type a message..." autocomplete="off">
+                            <button type="submit">Send</button>
+                        </form>
+                    </div>
+
+                    <!-- Group Settings Panel (Initially Hidden) -->
+                    <div class="hidden groupSettingsPanel">
+                        <div class="group-settings-header">
+                            <h3 id="groupSettingsName">Group Settings</h3>
+                            <button id="closeGroupSettingsButton" title="Back to Chat">&larr; Back to Chat</button>
+                        </div>
+                        <div class="group-settings-content">
+                            <div class="settings-section">
+                                <h4>Group Name</h4>
+                                <input type="text" id="updateGroupNameInput" placeholder="New group name">
+                                <button id="updateGroupNameButton" class="admin-only-group">Update Name</button>
+                            </div>
+
+                            <div class="settings-section">
+                                <h4>Members (<span id="groupMemberCount">0</span>)</h4>
+                                <ul id="groupMemberList">
+                                </ul>
+                            </div>
+
+                            <div class="settings-section admin-only-group">
+                                <h4>Add Member</h4>
+                                <input type="text" id="addUserToGroupInput" placeholder="Enter username to add">
+                                <button id="addUserToGroupButton">Add Member</button>
+                                <div id="addUserToGroupResults"></div>
+                            </div>
+
+                            <div class="settings-section">
+                                <h4>Group Actions</h4>
+                                <button id="leaveGroupButton" class="danger-button">Leave Group</button>
+                                <button id="deleteGroupButton" class="danger-button admin-only-group">Delete Group</button>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- End Group Settings Panel -->
+
+                </div>
+            </main>
+        </div> <!-- End of main-container -->
+    </div> <!-- End of chat-app -->
+
+    <!-- Add Contact Modal -->
+    <div id="addContactModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeContactModalButton">&times;</span>
+            <h4>Add New Friends</h4>
+            <div id="user-search-section-modal">
+                <div style="display: flex;">
+                    <input type="text" id="searchInputModal" placeholder="Search users by username..." style="flex: 1; border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: 0; border-right: none;">
+                    <button id="searchUserButtonModal" style="width: 70px; border-top-left-radius: 0; border-bottom-left-radius: 0;">&#128269;</button>
+                </div>
+                <div id="searchResultsModal" style="margin-top: 15px; max-height: 200px; overflow-y: auto;">
+                </div>
+                <p id="searchMessageModal" style="font-size: 0.9em; margin-top: 10px;"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div id="createGroupModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeCreateGroupModalButton">&times;</span>
+            <h4>Create New Group</h4>
+            <form id="createGroupForm">
+                <div class="form-group">
+                    <label for="groupNameInput">Group Name:</label>
+                    <input type="text" id="groupNameInput" autocomplete="off" required>
+                </div>
+                <!-- Optional: Add a way to select initial members here later -->
+                <button type="submit">Create Group</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Member Role Modal -->
+    <div id="changeRoleModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close-button" id="closeChangeRoleModalButton">&times;</span>
+            <h4>Change Member Role</h4>
+            <p>Change role for <strong id="changeRoleUserName"></strong>:</p>
+            <select id="newRoleSelect">
+                <option value="member">Member</option>
+                <option value="admin">Admin</option>
+            </select>
+            <input type="hidden" id="changeRoleUserId">
+            <button id="confirmChangeRoleButton">Confirm Change</button>
+        </div>
+    </div>
+    <!-- End Change Member Role Modal -->
+
+    <div id="callModal" class="modal" style="display:none;">
+        <div class="call-modal-content">
+            <h4 id="callModalTitle">Video Call</h4>
+            <div id="call-status" style="text-align: center; margin-bottom: 10px;">Initializing...</div>
+            <div class="video-container">
+                <img id="localUserPlaceholder" src="assets/img/default_img.jpg" alt="Local user" style="background-color: #222; display: none;">
+                <video id="localVideoModal" autoplay muted playsinline style="background-color: #000;"></video>
+                
+                <img id="remoteUserPlaceholder" src="assets/img/default_img.jpg" alt="Remote user" style=" background-color: #222; display: none; margin-top:10px;">
+                <video id="remoteVideoModal" autoplay playsinline style="background-color: #000; margin-top:10px;"></video>
+            </div>
+            <div id="incomingCallActions" style="display:none; text-align: center; margin-top: 15px;">
+                <button id="acceptCallButton" class="call-control-button accept-call">Accept</button>
+                <button id="rejectCallButton" class="call-control-button reject-call">Reject</button>
+            </div>
+            <div id="activeCallActions" style="text-align: center; margin-top: 15px;">
+                <button id="toggleMicrophoneButton" class="call-control-button">Mute Mic</button>
+                <button id="toggleCameraButton" class="call-control-button">Hide Cam</button> <!-- Only show for video calls -->
+                <button id="endCallButtonModal" class="call-control-button end-call">End Call</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript files -->
+    <script type="module" src="js/websocket_client.js"></script>
+    <script type="module" src="js/webrtc_handler.js"></script>
+    <script type="module" src="js/chat_handler.js"></script>
+    <script type="module" src="js/call_handler.js"></script>
+
+    <script type="module">
+        import { searchUsers, addFriend, loadFriends, deleteFriend, selectChat, sendMessage, displayMessage, getActiveChatPartnerId, getActiveChatPartnerUsername } from './js/chat_handler.js';
+        import { initWebSocket, sendWebSocketMessage, closeWebSocket } from './js/websocket_client.js';
+        import { initiateCall } from './js/call_handler.js';
+
+        window.addEventListener('load', () => {
+            const token = localStorage.getItem('accessToken');
+            const username = localStorage.getItem('username');
+            const userId = localStorage.getItem('userId');
+
+            if (!token && !userId) {
+                console.log('No active session found on chat page, redirecting to login.');
+                window.location.href = 'index.html'; // Redirect to login if not authenticated
+            } else {
+                console.log(`User ${username} is on chat page and logged in. Initializing chat page.`);
+                
+                const loggedInUserSpan = document.getElementById('loggedInUser');
+                if (loggedInUserSpan) {
+                    loggedInUserSpan.textContent = username;
+                }
+
+                if (typeof initWebSocket === 'function') {
+                    initWebSocket(userId);
+                } else {
+                    console.error('initWebSocket function not found. Ensure websocket_client.js is loaded correctly.');
+                }
+                loadFriends();
+            }
+            
+            const openModalButton = document.getElementById('openAddContactModalButton');
+            const closeModalButton = document.getElementById('closeContactModalButton');
+            const addContactModal = document.getElementById('addContactModal');
+            const searchUserButtonModal = document.getElementById('searchUserButtonModal');
+            const searchInputModal = document.getElementById('searchInputModal');
+            const searchResultsModal = document.getElementById('searchResultsModal');
+            const audioCallButton = document.getElementById('audioCallButton');
+            const videoCallButton = document.getElementById('videoCallButton');
+
+            if (openModalButton) {
+                openModalButton.addEventListener('click', () => {
+                    addContactModal.style.display = 'block';
+                    if(searchInputModal) searchInputModal.value = ''; 
+                    if(document.getElementById('searchResultsModal')) document.getElementById('searchResultsModal').innerHTML = '';
+                    if(document.getElementById('searchMessageModal')) document.getElementById('searchMessageModal').textContent = ''; 
+                });
+            }
+
+            if (closeModalButton) {
+                closeModalButton.addEventListener('click', () => {
+                    addContactModal.style.display = 'none';
+                });
+            }
+
+            window.addEventListener('click', (event) => {
+                if (event.target === addContactModal) {
+                    addContactModal.style.display = 'none';
+                }
+            });
+
+            if (searchUserButtonModal) {
+                searchUserButtonModal.addEventListener('click', () => {
+                    // No need for typeof check, searchUsers is directly available
+                    searchUsers(searchInputModal.value);
+                });
+            }
+
+            if(searchInputModal) {
+                searchInputModal.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        searchUsers(searchInputModal.value);
+                    }
+                });
+            }
+
+            if (searchResultsModal) {
+                searchResultsModal.addEventListener('click', (event) => {
+                    if (event.target.classList.contains('add-friend-btn')) {
+                        const usernameToAdd = event.target.dataset.username;
+                        const userIdToAdd = event.target.dataset.userId;
+                        addFriend(usernameToAdd, userIdToAdd);
+                    }
+                });
+            }
+
+            if (audioCallButton) {
+                audioCallButton.addEventListener('click', () => {
+                    const partnerId = getActiveChatPartnerId();
+                    const partnerUsername = getActiveChatPartnerUsername();
+                    if (partnerId) {
+                        initiateCall(partnerId, partnerUsername, 'audio');
+                    } else {
+                        alert('Please select a chat to start an audio call.');
+                    }
+                });
+            }
+
+            if (videoCallButton) {
+                videoCallButton.addEventListener('click', () => {
+                    const partnerId = getActiveChatPartnerId();
+                    const partnerUsername = getActiveChatPartnerUsername();
+                    if (partnerId) {
+                        initiateCall(partnerId, partnerUsername, 'video');
+                    } else {
+                        alert('Please select a chat to start a video call.');
+                    }
+                });
+            }
+
+            const chatForm = document.getElementById('chatForm');
+            if (chatForm) {
+                chatForm.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    sendMessage();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
