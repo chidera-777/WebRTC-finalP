@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://localhost:8000';
+const API_BASE_URL = 'https://192.168.43.122:8000';
 
 const loginForm = document.getElementById('loginForm');
 const registerForm = document.getElementById('registerForm');

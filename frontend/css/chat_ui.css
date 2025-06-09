@@ -182,7 +182,7 @@ margin: 5px 0;
     padding: 10px;
     background-color: #f0f0f0;
     border-top: 1px solid #ddd;
-    position: fixed;
+    position: sticky;
     right: 0;
     left: 30%;
     bottom: 0;
@@ -196,10 +196,10 @@ margin: 5px 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    position: fixed;
+    position: sticky;
     right: 0;
+    top: 0;
     left: 30%;
-    margin-bottom: 70px;
     z-index: 1000;
 }
 
@@ -503,7 +503,7 @@ margin: 5px 0;
     padding: 10px 20px;
     display: flex;
     flex-direction: column;
-    margin-top: 100px;
+    margin-top: 10px;
     gap: 8px;
 }
 #chatMessages::-webkit-scrollbar {
@@ -577,9 +577,11 @@ margin: 5px 0;
     margin-bottom: 15px;
     color: #ffffff;
     font-weight: 300;
+    text-align: center;
 }
 
 #call-status {
+    text-align: center;
     font-size: 1.1em;
     margin-bottom: 20px;
     color: #bdc3c7;
@@ -587,42 +589,125 @@ margin: 5px 0;
 }
 
 .video-container {
+    flex: 1;
     display: flex;
     flex-direction: column;
-    align-items: center;
     gap: 15px;
     margin-bottom: 25px;
-    position: relative;
-}
-
-#localVideoModal, #localUserPlaceholder,
-#remoteVideoModal, #remoteUserPlaceholder {
-    border-radius: 8px;
-    background-color: #34495e;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-
-#localVideoModal:hover, #localUserPlaceholder:hover,
-#remoteVideoModal:hover, #remoteUserPlaceholder:hover {
-    transform: scale(1.03);
-    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+    min-height: 0;
 }
 
 #localVideoModal, #localUserPlaceholder {
-    width: 120px;
-    height: 100px;
-    object-fit: cover;
-    border: 2px solid #7f8c8d;
+    width: 200px;
+    height: 150px;
+    border-radius: 10px;
+    background: #34495e;
+    border: 2px solid #3498db;
+    align-self: flex-end;
+    margin-bottom: 10px;
 }
 
-#remoteVideoModal, #remoteUserPlaceholder {
+#localUserPlaceholder {
+    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    text-align: center;
+}
+
+.participant-wrapper {
+    position: relative;
+    margin: 5px;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #333;
+    min-width: 180px;
+    min-height: 120px;
+    max-width: 250px;
+    max-height: 180px;
+    border: 2px solid #34495e;
+    transition: transform 0.2s ease;
+}
+
+.participant-wrapper:hover {
+    transform: scale(1.02);
+    border-color: #3498db;
+}
+
+.remote-video {
     width: 100%;
-    max-width: 240px;
-    min-height: 200px;
-    height: auto;
+    height: 100%;
     object-fit: cover;
-    border: 2px solid #7f8c8d;
+    background: #000;
+}
+
+.remote-audio {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.remote-audio-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 14px;
+    text-align: center;
+    min-height: 120px;
+}
+
+/* .remote-audio-placeholder::before {
+    content: "\1F3A4";
+    font-size: 3em;
+    margin-bottom: 10px;
+    opacity: 0.7;
+} */
+
+.participant-name-overlay {
+    position: absolute !important;
+    bottom: 5px !important;
+    left: 5px !important;
+    background: rgba(0,0,0,0.8) !important;
+    color: white !important;
+    padding: 4px 8px !important;
+    border-radius: 4px !important;
+    font-size: 12px !important;
+    font-weight: bold !important;
+    z-index: 10 !important;
+    pointer-events: none !important;
+}
+
+#remoteStreamsContainer {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    min-height: 200px;
+    background: rgba(52, 73, 94, 0.3);
+    gap: 10px;
+    border-radius: 10px;
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.remote-participant-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.remote-username {
+    font-size: 0.9em;
+    color: #eee;
+    margin-top: 5px;
 }
 
 #incomingCallActions,
@@ -654,20 +739,31 @@ margin: 5px 0;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.accept-call {
-    background-color: #2ecc71; /* Emerald green */
+.call-control-button:not(.accept-call):not(.reject-call):not(.end-call) {
+    background: linear-gradient(135deg, #34495e, #2c3e50);
     color: white;
 }
+
+.call-control-button:not(.accept-call):not(.reject-call):not(.end-call):hover {
+    background: linear-gradient(135deg, #2c3e50, #34495e);
+}
+
+.accept-call {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    color: white;
+}
+
 .accept-call:hover {
-    background-color: #27ae60;
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
 }
 
 .reject-call, .end-call {
-    background-color: #e74c3c;
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
     color: white;
 }
+
 .reject-call:hover, .end-call:hover {
-    background-color: #c0392b;
+    background: linear-gradient(135deg, #c0392b, #e74c3c);
 }
 
 #toggleMicrophoneButton, #toggleCameraButton {
@@ -678,13 +774,12 @@ margin: 5px 0;
     background-color: #2980b9;
 }
 
-#toggleMicrophoneButton.muted,
-#toggleCameraButton.hidden-cam {
-    background-color: #95a5a6;
+.call-control-button.muted {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
 }
-#toggleMicrophoneButton.muted:hover,
-#toggleCameraButton.hidden-cam:hover {
-    background-color: #7f8c8d;
+
+.call-control-button.hidden-cam {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
 }
 
 #createGroupForm .form-group {
@@ -718,4 +813,19 @@ margin: 5px 0;
 
 @media screen and (max-width: 768px) {
     
+}
+
+@keyframes participantJoin {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.participant-wrapper {
+    animation: participantJoin 0.3s ease-out;
 }

@@ -1,22 +1,27 @@
 let socket;
 let currentUserId;
-const WS_BASE_URL = 'wss://localhost:8000';
+const WS_BASE_URL = 'wss://192.168.43.122:8000';
 import { displayMessage } from "./chat_handler.js";
 import { 
     handleIncomingCallOffer, 
     handleCallAnswer, 
-    handleCallRejected, 
-    handleCallEnded, 
+    handleCallRejected,
+    handleCallEnded,
     handleCallBusy,
-    handleICECandidate 
+    handleICECandidate,
+    // Group call specific handlers
+    handleGroupCallJoin,
+    handleGroupCallLeave,
+    handleGroupCallEnded,
+    handleGroupCallBusy,
+    handleGroupCallStart  // New handler for group call start
 } from './call_handler.js';
 
 export function initWebSocket(userId) {
-    currentUserId = userId
+    currentUserId = userId;
     if (!userId) {
         return;
     }
-    currentUserId = userId;
 
     if (socket && socket.readyState === WebSocket.OPEN) {
         console.log('WebSocket already connected.');
@@ -35,11 +40,8 @@ export function initWebSocket(userId) {
     };
 
     socket.onmessage = (event) => {
-        console.log('WebSocket message received:', event.data);
         const message = JSON.parse(event.data);
-        console.log('Parsed WebSocket message:', message);
-
-        const fromUserId = message.from_user_id || message.from;
+        const senderId = message.user_id;
 
         switch (message.type) {
             case 'chat_message':
@@ -61,19 +63,15 @@ export function initWebSocket(userId) {
                 break;
             case 'user_left':
                 console.log('User left:', message.username, '(ID:', message.user_id, ')');
-
-                if (typeof targetUserId !== 'undefined' && targetUserId === message.user_id) { 
-                    if (typeof closePeerConnection === 'function') closePeerConnection();
-                }
                 break;
-            // WebRTC Signaling Messages for Calls
+            // WebRTC Signaling Messages for 1-on-1 Calls
             case 'call_offer':
                 handleIncomingCallOffer(message);
                 break;
             case 'call_answer':
                 handleCallAnswer(message);
                 break;
-            case 'candidate': 
+            case 'candidate':
                 handleICECandidate(message);
                 break;
             case 'call_rejected':
@@ -85,8 +83,37 @@ export function initWebSocket(userId) {
             case 'call_ended':
                 handleCallEnded(message);
                 break;
+            // Group call specific messages
+            case 'group-call-start':
+                handleGroupCallStart(message);
+                break;
+            case 'group-call-offer': 
+                handleIncomingCallOffer(message);
+                break;
+            case 'group-call-answer':
+                handleCallAnswer(message);
+                break;
+            case 'group-ice-candidate':
+                handleICECandidate(message);
+                break;
+            case 'group-call-join':
+                handleGroupCallJoin(message);
+                break;
+            case 'group-call-user-joined':
+                handleGroupCallJoin(message);
+                break;
+            case 'group-call-leave':
+                handleGroupCallLeave(message);
+                break;
+            case 'group-call-ended':
+                handleGroupCallEnded(message);
+                break;
+            case 'group-call-busy':
+                handleGroupCallBusy(message);
+                break;
             case 'error':
                 console.error('Server error message:', message.detail);
+                alert(`Server error: ${message.detail}`);
                 break;
 
             default:
@@ -95,8 +122,7 @@ export function initWebSocket(userId) {
     };
 
     socket.onclose = (event) => {
-        console.log('WebSocket connection closed:', event);
-        // Optionally, try to reconnect or notify the user
+        console.log('WebSocket connection closed:');
     };
 
     socket.onerror = (error) => {
@@ -108,6 +134,10 @@ export function sendWebSocketMessage(message) {
     if (socket && socket.readyState === WebSocket.OPEN) {
         if (!message.from_user_id && currentUserId) {
             message.from_user_id = currentUserId;
+        }
+        if (!message.sender_username) {
+            const username = localStorage.getItem('username');
+            if (username) message.sender_username = username;
         }
         socket.send(JSON.stringify(message));
     } else {

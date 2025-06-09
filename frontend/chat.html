@@ -165,8 +165,18 @@
                 <img id="localUserPlaceholder" src="assets/img/default_img.jpg" alt="Local user" style="background-color: #222; display: none;">
                 <video id="localVideoModal" autoplay muted playsinline style="background-color: #000;"></video>
                 
-                <img id="remoteUserPlaceholder" src="assets/img/default_img.jpg" alt="Remote user" style=" background-color: #222; display: none; margin-top:10px;">
-                <video id="remoteVideoModal" autoplay playsinline style="background-color: #000; margin-top:10px;"></video>
+                <!-- Container for multiple remote streams -->
+                <div id="remoteStreamsContainer" style="display: flex; flex-wrap: wrap; justify-content: center; margin-top:10px;">
+                    <!-- Remote video/audio elements will be dynamically added here -->
+                    <!-- Example of what addRemoteStream might create:
+                    <div class="remote-participant-container" id="remote-user-[USER_ID]">
+                        <video autoplay playsinline style="background-color: #000;"></video>
+                        <p class="remote-username">[USERNAME]</p>
+                    </div>
+                    -->
+                    <img id="remoteUserPlaceholder" src="assets/img/default_img.jpg" alt="Remote user" style=" background-color: #222; display: none; margin-top:10px;">
+                    <video id="remoteVideoModal" autoplay playsinline style="background-color: #000; margin-top:10px;"></video>    
+                </div>
             </div>
             <div id="incomingCallActions" style="display:none; text-align: center; margin-top: 15px;">
                 <button id="acceptCallButton" class="call-control-button accept-call">Accept</button>
@@ -187,7 +197,7 @@
     <script type="module" src="js/call_handler.js"></script>
 
     <script type="module">
-        import { searchUsers, addFriend, loadFriends, deleteFriend, selectChat, sendMessage, displayMessage, getActiveChatPartnerId, getActiveChatPartnerUsername } from './js/chat_handler.js';
+        import { searchUsers, addFriend, loadFriends, deleteFriend, sendMessage, displayMessage, getActiveChatPartnerId, getActiveChatPartnerUsername, getCurrentChatType, getCurrentActiveGroupId, getActiveGroupMembers} from './js/chat_handler.js';
         import { initWebSocket, sendWebSocketMessage, closeWebSocket } from './js/websocket_client.js';
         import { initiateCall } from './js/call_handler.js';
 
@@ -195,25 +205,17 @@
             const token = localStorage.getItem('accessToken');
             const username = localStorage.getItem('username');
             const userId = localStorage.getItem('userId');
+            const currentChatType = getCurrentChatType();
+            const currentActiveGroupId = getCurrentActiveGroupId();
 
             if (!token && !userId) {
                 console.log('No active session found on chat page, redirecting to login.');
-                window.location.href = 'index.html'; // Redirect to login if not authenticated
-            } else {
-                console.log(`User ${username} is on chat page and logged in. Initializing chat page.`);
-                
-                const loggedInUserSpan = document.getElementById('loggedInUser');
-                if (loggedInUserSpan) {
-                    loggedInUserSpan.textContent = username;
-                }
-
-                if (typeof initWebSocket === 'function') {
-                    initWebSocket(userId);
-                } else {
-                    console.error('initWebSocket function not found. Ensure websocket_client.js is loaded correctly.');
-                }
-                loadFriends();
+                window.location.href = 'index.html'; 
+                return;
             }
+            document.getElementById('loggedInUser').textContent = username;
+            initWebSocket(userId, username);
+            loadFriends();
             
             const openModalButton = document.getElementById('openAddContactModalButton');
             const closeModalButton = document.getElementById('closeContactModalButton');
@@ -271,25 +273,78 @@
             }
 
             if (audioCallButton) {
-                audioCallButton.addEventListener('click', () => {
-                    const partnerId = getActiveChatPartnerId();
-                    const partnerUsername = getActiveChatPartnerUsername();
-                    if (partnerId) {
-                        initiateCall(partnerId, partnerUsername, 'audio');
+                audioCallButton.addEventListener('click', async () => {
+                    const currentChatType = getCurrentChatType();
+                    const currentActiveGroupId = getCurrentActiveGroupId(); 
+                    if (currentChatType === 'group') {
+                        const groupMembers = await getActiveGroupMembers(currentActiveGroupId);
+                        if (groupMembers && groupMembers.length > 0) {
+                            const currentUserIdStr = userId;
+                            const membersToCall = groupMembers.filter(member => member.user_id && member.user_id.toString() !== currentUserIdStr);
+                            
+                            if (membersToCall.length > 0) {
+                                console.log(`Initiating group audio call for group ${currentActiveGroupId} with members:`, membersToCall);
+                                initiateCall({ 
+                                    groupId: currentActiveGroupId, 
+                                    recipients: membersToCall,
+                                }, username, false); // isVideoCall = false
+                            } else {
+                                console.warn('No other members in the group to call.');
+                                alert('You are the only one in this group, or no other members to call.');
+                            }
+                        } else {
+                            console.warn('Could not get group members for call.');
+                        }
+                    } else if (currentChatType === 'private') {
+                        const activeFriendId = getActiveChatPartnerId();
+                        const activeFriendUsername = getActiveChatPartnerUsername();
+                        if (activeFriendId) {
+                            initiateCall({ targetUserId: activeFriendId, targetUsername: activeFriendUsername }, username, false); // isVideoCall = false
+                        } else {
+                            console.warn('No active chat partner to call.');
+                            alert('Please select a friend to call.');
+                        }
                     } else {
-                        alert('Please select a chat to start an audio call.');
+                        console.warn('No active chat selected or unknown chat type.');
+                        alert('Please select a chat to start a call.');
                     }
                 });
             }
 
             if (videoCallButton) {
-                videoCallButton.addEventListener('click', () => {
-                    const partnerId = getActiveChatPartnerId();
-                    const partnerUsername = getActiveChatPartnerUsername();
-                    if (partnerId) {
-                        initiateCall(partnerId, partnerUsername, 'video');
+                videoCallButton.addEventListener('click', async () => {
+                    const currentChatType = getCurrentChatType();
+                    const currentActiveGroupId = getCurrentActiveGroupId(); 
+                    if (currentChatType === 'group') {
+                        const groupMembers = await getActiveGroupMembers(currentActiveGroupId);
+                        if (groupMembers && groupMembers.length > 0) {
+                            const currentUserIdStr = userId;
+                            const membersToCall = groupMembers.filter(member => member.user_id && member.user_id.toString() !== currentUserIdStr);
+                            if (membersToCall.length > 0) {
+                                console.log(`Initiating group video call for group ${currentActiveGroupId} with members:`, membersToCall);
+                                initiateCall({ 
+                                    groupId: currentActiveGroupId, 
+                                    recipients: membersToCall,
+                                }, username, true); // isVideoCall = true
+                            } else {
+                                console.warn('No other members in the group to call.');
+                                alert('You are the only one in this group, or no other members to call.');
+                            }
+                        } else {
+                            console.warn('Could not get group members for call.');
+                        }
+                    } else if (currentChatType === 'private') {
+                        const activeFriendId = getActiveChatPartnerId();
+                        const activeFriendUsername = getActiveChatPartnerUsername();
+                        if (activeFriendId) {
+                            initiateCall({ targetUserId: activeFriendId, targetUsername: activeFriendUsername }, username, true); // isVideoCall = true
+                        } else {
+                            console.warn('No active chat partner to call.');
+                            alert('Please select a friend to call.');
+                        }
                     } else {
-                        alert('Please select a chat to start a video call.');
+                        console.warn('No active chat selected or unknown chat type.');
+                        alert('Please select a chat to start a call.');
                     }
                 });
             }

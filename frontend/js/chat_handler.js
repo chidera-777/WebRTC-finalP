@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://localhost:8000';
+const API_BASE_URL = 'https://192.168.43.122:8000';
 
 const messagesDiv = document.getElementById('chatMessages');
 const chatInput = document.getElementById('chatInput');
@@ -232,10 +232,39 @@ export function getActiveChatPartnerId() {
     return currentActiveFriendId;
 }
 
-export function getActiveChatPartnerUsername(){
+export function getActiveChatPartnerUsername() {
     return currentActiveFriendUsername;
 }
 
+// New function to get active group members
+export async function getActiveGroupMembers(groupId) {
+    if (!groupId) {
+        console.error('No group ID provided to getActiveGroupMembers.');
+        return null;
+    }
+    const token = localStorage.getItem('accessToken');
+    try {
+        const response = await fetch(`${API_BASE_URL}/groups/${groupId}/members`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            const errorMessage = errorData?.detail || `Failed to fetch group members: ${response.statusText}`;
+            console.error(errorMessage);
+            showNotification(errorMessage, 'error');
+            return null;
+        }
+        const members = await response.json();
+        return members; // Assuming this returns an array of member objects {user_id, username, role}
+    } catch (error) {
+        console.error('Error fetching group members:', error);
+        showNotification('Error fetching group members.', 'error');
+        return null;
+    }
+}
 
 function openCreateGroupModal() {
     if (createGroupModal) {
@@ -376,8 +405,8 @@ export async function selectChat(id, name, type = 'private') {
         currentActiveFriendId = null;
         currentActiveFriendUsername = null;
         await fetchGroupMessageHistory(id);
-        document.getElementById('audioCallButton').style.display = 'none';
-        document.getElementById('videoCallButton').style.display = 'none';
+        document.getElementById('audioCallButton').style.display = 'inline-block';
+        document.getElementById('videoCallButton').style.display = 'inline-block';
 
         activeChatPartnerName.style.cursor = 'pointer';
         activeChatPartnerName.removeEventListener('click', openGroupSettingsPanel);
@@ -927,6 +956,14 @@ if (deleteGroupButton) {
             showNotification(`Error: ${error.message}`, 'error');
         }
     });
+}
+
+export function getCurrentChatType() {
+    return currentChatType;
+}
+
+export function getCurrentActiveGroupId() {
+    return currentActiveGroupId;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
