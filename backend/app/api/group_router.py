@@ -158,7 +158,6 @@ def update_group_member_role(group_id: int, user_id_to_update: int, role_update:
     return member_to_update
 
 
-# --- Group Messaging Endpoints ---
 
 @router.post("/{group_id}/messages", response_model=schemas.GroupMessage)
 async def send_group_message(group_id: int, message_create: schemas.GroupMessageBase, db: Session = Depends(database.get_db), current_user: models.User = Depends(security.get_current_active_user)):

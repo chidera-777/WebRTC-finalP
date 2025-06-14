@@ -35,22 +35,24 @@ const changeRoleUserNameSpan = document.getElementById('changeRoleUserName');
 const newRoleSelect = document.getElementById('newRoleSelect');
 const changeRoleUserIdInput = document.getElementById('changeRoleUserId');
 const confirmChangeRoleButton = document.getElementById('confirmChangeRoleButton');
+const chatListPanel = document.querySelector('.chat-list-panel');
+const activeChatPanel = document.querySelector('.active-chat-panel');
+const mobileBackButton = document.querySelector('.back-to-chat-list-btn');
 
-let currentUserRoleInGroup = 'member'; 
+let currentUserRoleInGroup = 'member';
 let currentActiveFriendId = null;
 let currentActiveFriendUsername = null;
-let currentActiveGroupId = null; 
-let currentActiveGroupName = null; 
+let currentActiveGroupId = null;
+let currentActiveGroupName = null;
 let currentChatType = null;
 
-const logoutBtnOnChatPage = document.getElementById('logoutButton'); 
+const logoutBtnOnChatPage = document.getElementById('logoutButton');
 if (logoutBtnOnChatPage) {
     if (typeof showAuthForms === 'function') {
         logoutBtnOnChatPage.addEventListener('click', () => {
-            showAuthForms(); 
+            showAuthForms();
         });
     } else {
-        console.error('showAuthForms function for logout not found.');
     }
 }
 
@@ -72,7 +74,6 @@ function showAuthForms() {
 
 export async function searchUsers(searchTerm) {
     if (!searchResultsModal || !searchMessageModal) {
-        console.error('Search modal elements not found');
         return;
     }
     searchMessageModal.textContent = 'Searching...';
@@ -82,10 +83,10 @@ export async function searchUsers(searchTerm) {
         return;
     }
     try {
-        const response = await fetch(`${API_BASE_URL}/contacts/search?query=${encodeURIComponent(searchTerm)}`, { 
-            headers: { 
+        const response = await fetch(`${API_BASE_URL}/contacts/search?query=${encodeURIComponent(searchTerm)}`, {
+            headers: {
                 'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json' 
+                'Accept': 'application/json'
             }
         });
         if (!response.ok) {
@@ -94,7 +95,6 @@ export async function searchUsers(searchTerm) {
                 const errorData = await response.json();
                 errorDetail = errorData.detail || JSON.stringify(errorData);
             } catch (e) {
-                // Keep the original statusText error if JSON parsing fails
             }
             throw new Error(errorDetail);
         }
@@ -113,15 +113,12 @@ export async function searchUsers(searchTerm) {
             searchResultsModal.appendChild(item);
         });
     } catch (error) {
-        console.error('Failed to search users:', error);
-        // Ensure error.message is displayed, which now should have more details
         searchMessageModal.textContent = error.message || 'Failed to search users. Please try again.';
     }
 }
 
-export async function addFriend(friendUsername, friendId) { // Added friendId for the API
+export async function addFriend(friendUsername, friendId) {
     if (!searchMessageModal) {
-        console.error('Search message modal element not found');
         return;
     }
     searchMessageModal.textContent = `Adding ${friendUsername}...`;
@@ -143,29 +140,27 @@ export async function addFriend(friendUsername, friendId) { // Added friendId fo
         const result = await response.json();
 
         searchMessageModal.textContent = `${friendUsername} added successfully!`;
-        loadFriends(); 
-        if (searchResultsModal) searchResultsModal.innerHTML = ''; // Clear results after adding
+        loadFriends();
+        if (searchResultsModal) searchResultsModal.innerHTML = '';
     } catch (error) {
-        console.error('Failed to add friend:', error);
         searchMessageModal.textContent = error.message || `Failed to add ${friendUsername}. Please try again.`;
     }
 }
 
 export async function loadFriends() {
     if (!chatListUl || !noChatsMessage || !token) {
-        console.error('Required elements or token not found for loading friends.');
         if (chatListUl) chatListUl.innerHTML = '<li>Error: Could not initialize friend list.</li>';
         return;
     }
 
     try {
         const response = await fetch(`${API_BASE_URL}/contacts/`,
-        {
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json'
-            }
-        });
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                }
+            });
 
         if (!response.ok) {
             if (response.status === 401) {
@@ -173,13 +168,12 @@ export async function loadFriends() {
                 window.location.href = '/index.html';
                 return;
             }
-            
+
             let errorDetail = `Failed to load friends: ${response.statusText}`;
             try {
                 const errorData = await response.json();
                 errorDetail = errorData.detail || JSON.stringify(errorData);
             } catch (e) {
-                // Keep original error if JSON parsing fails
             }
             throw new Error(errorDetail);
         }
@@ -191,7 +185,7 @@ export async function loadFriends() {
             noChatsMessage.style.display = 'block';
         } else {
             noChatsMessage.style.display = 'none';
-            friends.forEach(friend => { 
+            friends.forEach(friend => {
                 const li = document.createElement('li');
                 li.classList.add('chat-item');
                 li.dataset.userId = friend.id;
@@ -206,7 +200,7 @@ export async function loadFriends() {
                         <button class="delete-contact-btn" data-friend-id="${friend.id}" title="Delete ${friend.username}">&times;</button>
                     </div>
                 `;
-                
+
                 li.addEventListener('click', (event) => {
                     if (event.target.classList.contains('delete-contact-btn')) {
                         if (confirm(`Are you sure you want to remove ${friend.username} from your contacts?`)) {
@@ -220,7 +214,6 @@ export async function loadFriends() {
             });
         }
     } catch (error) {
-        console.error('Failed to load friends:', error);
         chatListUl.innerHTML = `<li>${error.message || 'Failed to load contacts.'}</li>`;
         noChatsMessage.style.display = 'none';
     }
@@ -235,11 +228,8 @@ export function getActiveChatPartnerId() {
 export function getActiveChatPartnerUsername() {
     return currentActiveFriendUsername;
 }
-
-// New function to get active group members
 export async function getActiveGroupMembers(groupId) {
     if (!groupId) {
-        console.error('No group ID provided to getActiveGroupMembers.');
         return null;
     }
     const token = localStorage.getItem('accessToken');
@@ -253,14 +243,12 @@ export async function getActiveGroupMembers(groupId) {
         if (!response.ok) {
             const errorData = await response.json().catch(() => null);
             const errorMessage = errorData?.detail || `Failed to fetch group members: ${response.statusText}`;
-            console.error(errorMessage);
             showNotification(errorMessage, 'error');
             return null;
         }
         const members = await response.json();
-        return members; // Assuming this returns an array of member objects {user_id, username, role}
+        return members;
     } catch (error) {
-        console.error('Error fetching group members:', error);
         showNotification('Error fetching group members.', 'error');
         return null;
     }
@@ -275,14 +263,13 @@ function openCreateGroupModal() {
 function closeCreateGroupModal() {
     if (createGroupModal) {
         createGroupModal.style.display = 'none';
-        if (groupNameInput) groupNameInput.value = ''; // Clear input
+        if (groupNameInput) groupNameInput.value = '';
     }
 }
 
 async function handleCreateGroup(event) {
     event.preventDefault();
     if (!groupNameInput || !token) {
-        console.error('Group name input or token not found.');
         showNotification('Could not create group. Missing required information.', 'error');
         return;
     }
@@ -293,7 +280,7 @@ async function handleCreateGroup(event) {
     }
 
     try {
-        const response = await fetch(`${API_BASE_URL}/groups/`, { 
+        const response = await fetch(`${API_BASE_URL}/groups/`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -313,14 +300,12 @@ async function handleCreateGroup(event) {
         closeCreateGroupModal();
         loadGroups();
     } catch (error) {
-        console.error('Failed to create group:', error);
         showNotification(`Failed to create group: ${error.message}`, "error");
     }
 }
 
 export async function loadGroups() {
     if (!groupListUl || !noGroupsMessage || !token) {
-        console.error('Required elements or token not found for loading groups.');
         if (groupListUl) groupListUl.innerHTML = '<li>Error: Could not initialize group list.</li>';
         return;
     }
@@ -335,7 +320,7 @@ export async function loadGroups() {
 
         if (!response.ok) {
             if (response.status === 401) {
-                showAuthForms(); 
+                showAuthForms();
                 return;
             }
             const errorData = await response.json().catch(() => ({ detail: 'Failed to load groups.' }));
@@ -345,9 +330,7 @@ export async function loadGroups() {
         groupListUl.innerHTML = '';
 
         if (groups.length === 0) {
-            // if (noGroupsMessage) noGroupsMessage.style.display = 'block';
         } else {
-            // if (noGroupsMessage) noGroupsMessage.style.display = 'none';
             groups.forEach(group => {
                 const li = document.createElement('li');
                 li.classList.add('chat-item');
@@ -367,7 +350,6 @@ export async function loadGroups() {
             });
         }
     } catch (error) {
-        console.error('Failed to load groups:', error);
         if (groupListUl) groupListUl.innerHTML = `<li>${error.message || 'Failed to load groups.'}</li>`;
         if (noGroupsMessage) noGroupsMessage.style.display = 'none';
     }
@@ -412,19 +394,20 @@ export async function selectChat(id, name, type = 'private') {
         activeChatPartnerName.removeEventListener('click', openGroupSettingsPanel);
         activeChatPartnerName.addEventListener('click', openGroupSettingsPanel);
     } else {
-        console.error('Unknown chat type:', type);
         activeChatPartnerName.textContent = 'Select a chat';
         if (currentChatArea) currentChatArea.classList.add('hidden');
         if (chatWelcomeScreen) chatWelcomeScreen.style.display = 'block';
         return;
     }
     if (chatInput) chatInput.focus();
+    if (window.innerWidth <= 768) {
+        document.body.classList.add('mobile-chat-view-active');
+    }
 }
 
 
 export async function fetchGroupMessageHistory(groupId) {
     if (!groupId || !token) {
-        console.error('Group ID or token not found for fetching history.');
         return;
     }
     try {
@@ -443,40 +426,35 @@ export async function fetchGroupMessageHistory(groupId) {
         messages.forEach(msg => displayMessage(msg, true, 'group'));
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     } catch (error) {
-        console.error('Error fetching group message history:', error);
         if (messagesDiv) messagesDiv.innerHTML = `<p class="error-message">Error loading messages: ${error.message}</p>`;
     }
 }
 
 export async function deleteFriend(friendId, friendUsername) {
-    console.log(`Attempting to delete friend: ${friendUsername} (ID: ${friendId})`);
     try {
-        
+
         const response = await fetch(`${API_BASE_URL}/contacts/${friendId}`, {
             method: 'DELETE',
             headers: {
                 'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json' 
+                'Accept': 'application/json'
             }
         });
 
         if (!response.ok) {
             let errorDetail = `Error deleting friend: ${response.statusText}`;
-            if (response.status !== 204) { // 204 No Content might not have a body
+            if (response.status !== 204) {
                 try {
                     const errorData = await response.json();
                     errorDetail = errorData.detail || JSON.stringify(errorData);
                 } catch (e) {
-                    // Keep original statusText error if JSON parsing fails
                 }
             }
             throw new Error(errorDetail);
         }
         showNotification(`${friendUsername} has been removed from your contacts.`, "success");
-        loadFriends(); // Refresh the friend list
-
+        loadFriends();
     } catch (error) {
-        console.error('Failed to delete friend:', error);
         showNotification(`Failed to remove ${friendUsername}. Error: ${error.message}`, "error");
     }
 }
@@ -491,17 +469,13 @@ export function displayMessage(message, isHistory = false, chatType = 'private')
     let relevantToCurrentChat = false;
     if (chatType === 'private' && currentActiveFriendId) {
         relevantToCurrentChat = isHistory ||
-                                (message.sender_id === currentActiveFriendId && message.receiver_id === currentUserId) ||
-                                (message.sender_id === currentUserId && message.receiver_id === currentActiveFriendId);
+            (message.sender_id === currentActiveFriendId && message.receiver_id === currentUserId) ||
+            (message.sender_id === currentUserId && message.receiver_id === currentActiveFriendId);
     } else if (chatType === 'group' && currentActiveGroupId) {
-        // For group messages, check if message.group_id matches currentActiveGroupId
-        // This assumes your backend includes group_id in the message payload for group messages
         relevantToCurrentChat = isHistory || (message.group_id === currentActiveGroupId);
     }
 
-    if (!relevantToCurrentChat && !isHistory) { // Allow history to always display for the selected chat
-        console.log("Received message for a different chat or group:", message);
-        // TODO: Add notification badge to the respective chat/group list item
+    if (!relevantToCurrentChat && !isHistory) {
         return;
     }
 
@@ -518,17 +492,18 @@ export function displayMessage(message, isHistory = false, chatType = 'private')
     messageElement.innerHTML = `
         ${senderDisplayName}
         <p class="message-content">${message.content}</p>
-        <span class="message-timestamp">${new Date(message.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}</span>
+        <span class="message-timestamp">${new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
     `;
 
     messagesDiv.appendChild(messageElement);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    setTimeout(() => {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
 }
 
 export async function fetchMessageHistory(friendId) {
     if (!friendId) return;
     if (!token) {
-        console.error("No access token found.");
         return;
     }
 
@@ -541,7 +516,6 @@ export async function fetchMessageHistory(friendId) {
         });
         if (!response.ok) {
             const errorData = await response.json();
-            console.error('Failed to fetch message history:', errorData.detail);
             return;
         }
 
@@ -552,22 +526,19 @@ export async function fetchMessageHistory(friendId) {
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
     } catch (error) {
-        console.error('Error fetching message history:', error);
     }
 }
 
 export async function sendMessage() {
     const content = chatInput.value.trim();
     if (!content) {
-        console.log("Cannot send empty message.");
         return;
     }
     if (!token) {
-        console.error("No access token found for sending message.");
         return;
     }
 
-    let messagePayload; 
+    let messagePayload;
     let endpoint;
 
     if (currentChatType === 'private' && currentActiveFriendId) {
@@ -582,7 +553,6 @@ export async function sendMessage() {
         };
         endpoint = `${API_BASE_URL}/groups/${currentActiveGroupId}/messages`;
     } else {
-        console.log("No active chat (private or group) selected.");
         return;
     }
 
@@ -598,26 +568,23 @@ export async function sendMessage() {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ detail: 'Failed to send message.' }));
-            console.error('Failed to send message:', errorData.detail);
             return;
         }
 
         const sentMessage = await response.json();
         displayMessage(sentMessage, false, currentChatType);
-        
+
         chatInput.value = '';
     } catch (error) {
-        console.error('Error sending message:', error);
     }
 }
 
 async function openGroupSettingsPanel() {
     if (!currentActiveGroupId) return;
-    console.log(`Opening group settings for group ID: ${currentActiveGroupId}`);
     if (currentChatArea) currentChatArea.classList.add('hidden');
     if (groupSettingsPanel) groupSettingsPanel.classList.remove('hidden');
     if (groupSettingsName) groupSettingsName.textContent = `${currentActiveGroupName} - Settings`;
-    
+
     await loadGroupDetailsForSettings(currentActiveGroupId);
 }
 
@@ -633,8 +600,7 @@ if (closeGroupSettingsButton) {
 
 async function loadGroupDetailsForSettings(groupId) {
     try {
-        // Fetch group details (includes members with roles)
-        const response = await fetch(`${API_BASE_URL}/groups/${groupId}`, { // Assuming this endpoint returns GroupDetails with members
+        const response = await fetch(`${API_BASE_URL}/groups/${groupId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!response.ok) throw new Error(`Failed to fetch group details: ${response.statusText}`);
@@ -657,11 +623,11 @@ async function loadGroupDetailsForSettings(groupId) {
                 li.innerHTML = `
                     <span class="member-info">${memberName} (${member.role})</span>
                     <span class="member-actions">
-                        ${currentUserRoleInGroup === 'admin' && member.user_id !== currentUserId ? 
-                            `<button class="change-role-btn admin-only-group" data-user-id="${member.user_id}" data-username="${memberName}" data-current-role="${member.role}">Change Role</button> 
+                        ${currentUserRoleInGroup === 'admin' && member.user_id !== currentUserId ?
+                        `<button class="change-role-btn admin-only-group" data-user-id="${member.user_id}" data-username="${memberName}" data-current-role="${member.role}">Change Role</button> 
                              <button class="remove-member-btn admin-only-group" data-user-id="${member.user_id}" data-username="${memberName}">Remove</button>` : ''}
-                        ${member.user_id === currentUserId && groupDetails.members.length > 1 && !(currentUserRoleInGroup === 'admin' && groupDetails.members.filter(m => m.role ==='admin').length === 1) ? 
-                            '' : ''} 
+                        ${member.user_id === currentUserId && groupDetails.members.length > 1 && !(currentUserRoleInGroup === 'admin' && groupDetails.members.filter(m => m.role === 'admin').length === 1) ?
+                        '' : ''} 
                     </span>
                 `;
                 groupMemberListUl.appendChild(li);
@@ -676,7 +642,6 @@ async function loadGroupDetailsForSettings(groupId) {
         });
 
     } catch (error) {
-        console.error('Error loading group details for settings:', error);
         if (groupMemberListUl) groupMemberListUl.innerHTML = '<li>Error loading members.</li>';
     }
 }
@@ -685,14 +650,12 @@ function updateAdminOnlyElementsVisibility() {
     const isAdmin = currentUserRoleInGroup === 'admin';
     document.querySelectorAll('.admin-only-group').forEach(el => {
         if (isAdmin) {
-            el.style.display = ''; // Or 'block', 'flex', etc., depending on original display type
+            el.style.display = '';
         } else {
             el.style.display = 'none';
         }
     });
 }
-
-// Event handler for Update Group Name button
 if (updateGroupNameButton) {
     updateGroupNameButton.addEventListener('click', async () => {
         const newName = updateGroupNameInput.value.trim();
@@ -712,10 +675,9 @@ if (updateGroupNameButton) {
             currentActiveGroupName = updatedGroup.name;
             activeChatPartnerName.textContent = currentActiveGroupName;
             if (groupSettingsName) groupSettingsName.textContent = `${currentActiveGroupName} - Settings`;
-            loadGroups(); 
+            loadGroups();
             showNotification('Group name updated successfully!', 'success');
         } catch (error) {
-            console.error('Error updating group name:', error);
             showNotification('Error updating group name.', 'error');
         }
     });
@@ -730,9 +692,9 @@ if (addUserToGroupButton) {
             return;
         }
         if (addUserToGroupResults) addUserToGroupResults.textContent = 'Searching and adding...';
-        
+
         try {
-            const searchResponse = await fetch(`${API_BASE_URL}/contacts/search?query=${encodeURIComponent(usernameToAdd)}`, { 
+            const searchResponse = await fetch(`${API_BASE_URL}/contacts/search?query=${encodeURIComponent(usernameToAdd)}`, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
             });
             if (!searchResponse.ok) throw new Error('Failed to search for user.');
@@ -743,14 +705,14 @@ if (addUserToGroupButton) {
             }
             const userToAdd = users.find(u => u.username.toLowerCase() === usernameToAdd.toLowerCase());
             if (!userToAdd) {
-                 if (addUserToGroupResults) addUserToGroupResults.textContent = `User '${usernameToAdd}' not found (exact match).`;
+                if (addUserToGroupResults) addUserToGroupResults.textContent = `User '${usernameToAdd}' not found (exact match).`;
                 return;
             }
 
             const response = await fetch(`${API_BASE_URL}/groups/${currentActiveGroupId}/members`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ user_id: userToAdd.id, role: 'member' }) // Default role 'member'
+                body: JSON.stringify({ user_id: userToAdd.id, role: 'member' })
             });
             if (!response.ok) {
                 const errorData = await response.json();
@@ -759,9 +721,8 @@ if (addUserToGroupButton) {
             await response.json();
             if (addUserToGroupResults) addUserToGroupResults.textContent = `${usernameToAdd} added successfully.`;
             addUserToGroupInput.value = '';
-            await loadGroupDetailsForSettings(currentActiveGroupId); // Refresh member list
+            await loadGroupDetailsForSettings(currentActiveGroupId);
         } catch (error) {
-            console.error('Error adding member to group:', error);
             if (addUserToGroupResults) addUserToGroupResults.textContent = `Error: ${error.message}`;
         }
     });
@@ -795,7 +756,6 @@ async function removeGroupMember(groupId, userId, username) {
         showNotification(`${username} removed successfully.`, 'success');
         await loadGroupDetailsForSettings(groupId);
     } catch (error) {
-        console.error('Error removing member:', error);
         showNotification(`Error: ${error.message}`, 'error');
     }
 }
@@ -806,16 +766,14 @@ function showNotification(message, type = 'info') {
     notification.textContent = message;
 
     document.body.appendChild(notification);
-
-    // Make it visible
     setTimeout(() => {
         notification.classList.add('visible');
-    }, 10); 
+    }, 10);
     setTimeout(() => {
         notification.classList.remove('visible');
         setTimeout(() => {
             notification.remove();
-        }, 500); 
+        }, 500);
     }, 3000);
 }
 
@@ -871,7 +829,6 @@ if (confirmChangeRoleButton) {
             if (changeRoleModal) changeRoleModal.style.display = 'none';
             await loadGroupDetailsForSettings(currentActiveGroupId);
         } catch (error) {
-            console.error('Error updating member role:', error);
             showNotification(`Error: ${error.message}`, 'error');
         }
     });
@@ -886,8 +843,8 @@ if (leaveGroupButton) {
         const currentUserId = localStorage.getItem('userId');
         try {
             if (currentUserRoleInGroup === 'admin') {
-                const groupDetailsResponse = await fetch(`${API_BASE_URL}/groups/${currentActiveGroupId}`, { 
-                     headers: { 'Authorization': `Bearer ${token}` }
+                const groupDetailsResponse = await fetch(`${API_BASE_URL}/groups/${currentActiveGroupId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!groupDetailsResponse.ok) throw new Error('Could not verify admin status before leaving.');
                 const groupDetails = await groupDetailsResponse.json();
@@ -907,7 +864,6 @@ if (leaveGroupButton) {
                 throw new Error(errorData.detail || 'Failed to leave group.');
             }
             showNotification('You have left the group.', 'info');
-            // Reset view
             currentActiveGroupId = null;
             currentActiveGroupName = null;
             currentChatType = null;
@@ -917,7 +873,6 @@ if (leaveGroupButton) {
             activeChatPartnerName.textContent = 'Select a chat';
             loadGroups();
         } catch (error) {
-            console.error('Error leaving group:', error);
             showNotification(`Error: ${error.message}`, 'error');
         }
     });
@@ -950,9 +905,8 @@ if (deleteGroupButton) {
             if (currentChatArea) currentChatArea.classList.add('hidden');
             if (chatWelcomeScreen) chatWelcomeScreen.style.display = 'block';
             activeChatPartnerName.textContent = 'Select a chat';
-            loadGroups(); // Refresh group list
+            loadGroups();
         } catch (error) {
-            console.error('Error deleting group:', error);
             showNotification(`Error: ${error.message}`, 'error');
         }
     });
@@ -964,6 +918,22 @@ export function getCurrentChatType() {
 
 export function getCurrentActiveGroupId() {
     return currentActiveGroupId;
+}
+
+function handleMobileView() {
+    if (window.innerWidth <= 768) {
+        if (!document.body.classList.contains('mobile-chat-view-active')) {
+            if (chatListPanel) chatListPanel.style.transform = 'translateX(0%)';
+            if (activeChatPanel) activeChatPanel.style.transform = 'translateX(100%)';
+        } else {
+            if (chatListPanel) chatListPanel.style.transform = 'translateX(-100%)';
+            if (activeChatPanel) activeChatPanel.style.transform = 'translateX(0%)';
+        }
+    } else {
+        document.body.classList.remove('mobile-chat-view-active');
+        if (chatListPanel) chatListPanel.style.transform = '';
+        if (activeChatPanel) activeChatPanel.style.transform = '';
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -982,4 +952,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadFriends();
     loadGroups();
+
+    if (mobileBackButton) {
+        mobileBackButton.addEventListener('click', () => {
+            document.body.classList.remove('mobile-chat-view-active');
+            handleMobileView();
+        });
+    }
+    handleMobileView();
+    window.addEventListener('resize', handleMobileView);
 });

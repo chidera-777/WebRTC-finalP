@@ -2,24 +2,19 @@ import http.server
 import ssl
 import os
 
-# --- Configuration ---
 SERVER_ADDRESS = '0.0.0.0'
 SERVER_PORT = 8080
 
 KEY_FILE = '../backend/key.pem'
 CERT_FILE = '../backend/cert.pem'
-# --- End Configuration ---
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 keyfile_path = os.path.join(script_dir, KEY_FILE)
 certfile_path = os.path.join(script_dir, CERT_FILE)
 
 if not os.path.exists(keyfile_path):
-    print(f"Error: Key file not found at {keyfile_path}")
     exit(1)
 if not os.path.exists(certfile_path):
-    print(f"Error: Certificate file not found at {certfile_path}")
     exit(1)
 
 httpd = http.server.HTTPServer((SERVER_ADDRESS, SERVER_PORT), http.server.SimpleHTTPRequestHandler)
@@ -32,5 +27,4 @@ httpd.socket = ssl.wrap_socket(
 )
 
 print(f"Serving HTTPS on {SERVER_ADDRESS} port {SERVER_PORT}...")
-print(f"Access it at: https://192.168.137.1:{SERVER_PORT}/")
 httpd.serve_forever()

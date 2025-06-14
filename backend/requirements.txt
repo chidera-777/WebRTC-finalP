@@ -3,5 +3,4 @@ uvicorn[standard]
 sqlalchemy
 passlib[bcrypt]
 python-jose[cryptography]
-python-multipart # For OAuth2PasswordRequestForm
-websockets
+python-multipart websockets

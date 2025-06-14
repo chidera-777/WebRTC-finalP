@@ -9,12 +9,11 @@ import {
     handleCallEnded,
     handleCallBusy,
     handleICECandidate,
-    // Group call specific handlers
     handleGroupCallJoin,
     handleGroupCallLeave,
     handleGroupCallEnded,
     handleGroupCallBusy,
-    handleGroupCallStart  // New handler for group call start
+    handleGroupCallStart
 } from './call_handler.js';
 
 export function initWebSocket(userId) {
@@ -24,14 +23,12 @@ export function initWebSocket(userId) {
     }
 
     if (socket && socket.readyState === WebSocket.OPEN) {
-        console.log('WebSocket already connected.');
-        return;
+return;
     }
     socket = new WebSocket(`${WS_BASE_URL}/ws/${userId}`);
 
     socket.onopen = () => {
-        console.log('WebSocket connection established for user ID:', userId);
-        const username = localStorage.getItem('username');
+const username = localStorage.getItem('username');
         socket.send(JSON.stringify({ 
             type: 'join', 
             userId: userId, 
@@ -48,23 +45,18 @@ export function initWebSocket(userId) {
                 if (typeof displayMessage === 'function') {
                      displayMessage(message);
                 } else {
-                    console.error('displayMessage function not found to handle private_message.');
-                }
+}
                 break;
             case 'group_message':
                 if (typeof displayMessage === 'function') {
                      displayMessage(message, false, 'group');
                 } else {
-                    console.error('displayMessage function not found to handle group_message.');
-                }
+}
                 break;
             case 'user_joined':
-                console.log('User joined:', message.username, '(ID:', message.user_id, ')');
-                break;
+break;
             case 'user_left':
-                console.log('User left:', message.username, '(ID:', message.user_id, ')');
-                break;
-            // WebRTC Signaling Messages for 1-on-1 Calls
+break;
             case 'call_offer':
                 handleIncomingCallOffer(message);
                 break;
@@ -83,7 +75,6 @@ export function initWebSocket(userId) {
             case 'call_ended':
                 handleCallEnded(message);
                 break;
-            // Group call specific messages
             case 'group-call-start':
                 handleGroupCallStart(message);
                 break;
@@ -112,22 +103,18 @@ export function initWebSocket(userId) {
                 handleGroupCallBusy(message);
                 break;
             case 'error':
-                console.error('Server error message:', message.detail);
-                alert(`Server error: ${message.detail}`);
+alert(`Server error: ${message.detail}`);
                 break;
 
             default:
-                console.log('Received unhandled message type:', message.type, message);
-        }
+}
     };
 
     socket.onclose = (event) => {
-        console.log('WebSocket connection closed:');
-    };
+};
 
     socket.onerror = (error) => {
-        console.error('WebSocket error:', error);
-    };
+};
 }
 
 export function sendWebSocketMessage(message) {
@@ -141,8 +128,7 @@ export function sendWebSocketMessage(message) {
         }
         socket.send(JSON.stringify(message));
     } else {
-        console.error('WebSocket is not connected.');
-    }
+}
 }
 
 export function closeWebSocket() {

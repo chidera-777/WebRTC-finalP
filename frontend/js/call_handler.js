@@ -5,12 +5,11 @@ import {
     handleAnswer as handleWebRTCAnswer,
     handleCandidate as handleWebRTCCandidate,
     setLocalStream as setWebRTCLocalStream,
-    getLocalStream as getWebRTCLocalStream,
     closeConnection as closeWebRTCConnection,
-    closeAllConnections as closeAllWebRTCConnections
+    closeAllConnections as closeAllWebRTCConnections,
+    getWebRTCConnection
 } from './webrtc_handler.js';
 
-let currentCallState = 'idle';
 let currentCallType = null;
 let localStreamRef = null;
 
@@ -20,7 +19,7 @@ const currentCall = {
     groupId: null,
     recipients: [],
     isVideo: false,
-    callState: 'idle', 
+    callState: 'idle',
     pendingOfferSdp: null,
     participants: {},
     activeParticipants: []
@@ -40,25 +39,18 @@ const toggleMicrophoneButton = document.getElementById('toggleMicrophoneButton')
 const toggleCameraButton = document.getElementById('toggleCameraButton');
 const endCallButtonModal = document.getElementById('endCallButtonModal');
 
-// Function to add local stream as a participant placeholder
 function addLocalStreamPlaceholder() {
     const localUserId = localStorage.getItem('userId');
     const localUsername = localStorage.getItem('username');
-    
-    console.log(`🎯 Adding local stream placeholder for: ${localUsername} (${localUserId})`);
-    
+
     if (!localStreamRef) {
-        console.warn('No local stream available for placeholder');
         return;
     }
-    
+
     addLocalUserDisplay(localUserId, localStreamRef, localUsername, currentCall.groupId, currentCall.isVideo);
 }
 
 function addLocalUserDisplay(userId, stream, username, groupId, isVideo) {
-    console.log(`🎥 Adding LOCAL display for ${username || userId} (isVideo: ${isVideo})`);
-    
-    const localUserId = localStorage.getItem('userId');
     const callType = groupId || 'peer';
     const elementId = `local-${userId}-${callType}`;
     const wrapperElementId = `wrapper-${elementId}`;
@@ -70,7 +62,7 @@ function addLocalUserDisplay(userId, stream, username, groupId, isVideo) {
         wrapper = document.createElement('div');
         wrapper.id = wrapperElementId;
         wrapper.classList.add('participant-wrapper', 'local-participant');
-        
+
         const isOneOnOne = !groupId;
         wrapper.style.cssText = `
             position: relative;
@@ -88,12 +80,9 @@ function addLocalUserDisplay(userId, stream, username, groupId, isVideo) {
         if (remoteStreamsContainer) {
             remoteStreamsContainer.appendChild(wrapper);
         } else {
-            console.error('❌ remoteStreamsContainer not found');
             return;
         }
     }
-
-    // Create name overlay
     const nameOverlay = document.createElement('div');
     nameOverlay.classList.add('participant-name-overlay');
     nameOverlay.textContent = `${username} (You)`;
@@ -116,7 +105,7 @@ function addLocalUserDisplay(userId, stream, username, groupId, isVideo) {
         mediaElement = document.createElement('video');
         mediaElement.autoplay = true;
         mediaElement.playsinline = true;
-        mediaElement.muted = true; // Always mute local video
+        mediaElement.muted = true;
         mediaElement.classList.add('local-video');
         mediaElement.style.cssText = `
             width: 100%;
@@ -130,7 +119,7 @@ function addLocalUserDisplay(userId, stream, username, groupId, isVideo) {
         mediaElement.autoplay = true;
         mediaElement.muted = true; // Always mute local audio
         mediaElement.classList.add('local-audio');
-        
+
         const audioPlaceholder = document.createElement('div');
         const isOneOnOne = !groupId;
         audioPlaceholder.style.cssText = `
@@ -156,23 +145,18 @@ function addLocalUserDisplay(userId, stream, username, groupId, isVideo) {
         `;
         wrapper.appendChild(audioPlaceholder);
     }
-    
+
     mediaElement.id = elementId;
     mediaElement.srcObject = stream;
     mediaElement.play().catch(e => console.warn(`▶️ Local autoplay prevented:`, e));
     wrapper.appendChild(mediaElement);
-
-    console.log(`✅ Local user display created for ${username}`);
 }
 
 function updateCallState(newState) {
-    console.log(`Call state changing from ${currentCall.callState} to ${newState}`);
     currentCall.callState = newState;
-
-    // Clear display
     localVideoModal.style.display = 'none';
-    if(localUserPlaceholder) localUserPlaceholder.style.display = 'none';
-    if(remoteStreamsContainer) {
+    if (localUserPlaceholder) localUserPlaceholder.style.display = 'none';
+    if (remoteStreamsContainer) {
         const mediaElements = remoteStreamsContainer.querySelectorAll('video, audio');
         mediaElements.forEach(element => {
             if (element.srcObject) {
@@ -188,7 +172,7 @@ function updateCallState(newState) {
         case 'idle':
             callModal.style.display = 'none';
             incomingCallActions.style.display = 'none';
-            activeCallActions.style.display = 'block'; 
+            activeCallActions.style.display = 'block';
             currentCall.peerId = null;
             currentCall.groupId = null;
             currentCall.recipients = [];
@@ -206,7 +190,7 @@ function updateCallState(newState) {
 
             closeAllWebRTCConnections();
             break;
-            
+
         case 'initiating':
             callModal.style.display = 'block';
             currentCallType = currentCall.isVideo ? 'video' : 'audio';
@@ -221,7 +205,7 @@ function updateCallState(newState) {
             incomingCallActions.style.display = 'none';
             activeCallActions.style.display = 'block';
             break;
-            
+
         case 'ringing':
             callModal.style.display = 'block';
             currentCallType = currentCall.isVideo ? 'video' : 'audio';
@@ -236,7 +220,7 @@ function updateCallState(newState) {
             incomingCallActions.style.display = 'block';
             activeCallActions.style.display = 'none';
             break;
-            
+
         case 'active':
             callModal.style.display = 'block';
             currentCallType = currentCall.isVideo ? 'video' : 'audio';
@@ -246,10 +230,8 @@ function updateCallState(newState) {
             if (currentCall.groupId) {
                 activeTitle = `Group ${activeTitle}`;
             }
-            
-            // Always add local placeholder for active calls (both 1-on-1 and group)
             addLocalStreamPlaceholder();
-            
+
             callModalTitle.textContent = activeTitle;
             callStatus.textContent = 'Call in progress...';
             incomingCallActions.style.display = 'none';
@@ -265,14 +247,14 @@ async function getLocalMedia(isVideoCall) {
             audio: true
         });
         localStreamRef = stream;
-        setWebRTCLocalStream(stream); 
+        setWebRTCLocalStream(stream);
         if (isVideoCall && !currentCall.groupId) {
             localVideoModal.srcObject = stream;
         }
         return stream;
     } catch (error) {
         alert('Could not access your camera/microphone. Please check permissions and try again.');
-        updateCallState('idle'); 
+        updateCallState('idle');
         return null;
     }
 }
@@ -291,10 +273,10 @@ export async function initiateCall(callDetails, username, isVideoCall) {
 
     if (callDetails.targetUserId) { // 1-on-1 Call
         currentCall.peerId = callDetails.targetUserId;
-        currentCall.participants[callDetails.targetUserId] = { 
-            username: callDetails.targetUsername, 
-            stream: null, 
-            elementId: null 
+        currentCall.participants[callDetails.targetUserId] = {
+            username: callDetails.targetUsername,
+            stream: null,
+            elementId: null
         };
 
         try {
@@ -307,44 +289,38 @@ export async function initiateCall(callDetails, username, isVideoCall) {
                 sdp: offer,
                 isVideo: isVideoCall
             });
-            console.log('✅ 1-on-1 call offer sent to', callDetails.targetUsername);
         } catch (error) {
-            console.error('❌ Error initiating 1-on-1 call:', error);
             updateCallState('idle');
         }
     } else if (callDetails.groupId && callDetails.recipients) { // Group Call
         currentCall.groupId = callDetails.groupId;
         const validRecipients = callDetails.recipients.filter(r => r && r.user_id !== undefined);
-        
+
         if (validRecipients.length === 0) {
-            console.error('No valid recipients found');
             updateCallState('idle');
             alert('Could not initiate group call: No valid recipients.');
             return;
         }
-        
+
         const localUserId = localStorage.getItem('userId');
-        currentCall.participants[localUserId] = { 
-            username: localStorage.getItem('username'), 
-            stream: localStreamRef, 
-            elementId: 'localVideoModal' 
+        currentCall.participants[localUserId] = {
+            username: localStorage.getItem('username'),
+            stream: localStreamRef,
+            elementId: 'localVideoModal'
         };
         currentCall.activeParticipants = [localUserId];
 
         validRecipients.forEach(r => {
             const recipientUserIdStr = r.user_id.toString();
             if (recipientUserIdStr !== localUserId) {
-                currentCall.participants[recipientUserIdStr] = { 
-                    username: r.user.username, 
-                    stream: null, 
-                    elementId: null 
+                currentCall.participants[recipientUserIdStr] = {
+                    username: r.user.username,
+                    stream: null,
+                    elementId: null
                 };
             }
         });
-        
-        console.log(`🚀 Starting group call for ${validRecipients.length} recipients`);
-        
-        // Send group call start notification
+
         sendWebSocketMessage({
             type: 'group-call-start',
             groupId: currentCall.groupId,
@@ -357,7 +333,7 @@ export async function initiateCall(callDetails, username, isVideoCall) {
 
 export function handleGroupCallStart(data) {
     if (data.userId === localStorage.getItem('userId')) {
-        return; // Ignore own start notification
+        return;
     }
 
     if (currentCall.callState !== 'idle') {
@@ -372,8 +348,6 @@ export function handleGroupCallStart(data) {
         return;
     }
 
-    console.log(`📞 Incoming group call from ${data.sender_username}`);
-    
     currentCall.groupId = data.groupId;
     currentCall.peerId = data.userId;
     currentCall.isVideo = data.isVideo;
@@ -404,13 +378,11 @@ export async function acceptCall() {
     if (currentCall.callState !== 'ringing' || !currentCall.peerId) {
         return;
     }
-    
-    console.log(`✅ Accepting call from ${currentCall.peerId}`);
-    
+
     if (!localStreamRef) {
         const stream = await getLocalMedia(currentCall.isVideo);
         if (!stream) {
-            updateCallState('idle'); 
+            updateCallState('idle');
             return;
         }
     }
@@ -418,20 +390,17 @@ export async function acceptCall() {
     const localUserId = localStorage.getItem('userId');
 
     if (currentCall.groupId) {
-        // Group call acceptance
         if (!currentCall.participants[localUserId]) {
-            currentCall.participants[localUserId] = { 
-                username: localStorage.getItem('username'), 
-                stream: localStreamRef, 
-                elementId: 'localVideoModal' 
+            currentCall.participants[localUserId] = {
+                username: localStorage.getItem('username'),
+                stream: localStreamRef,
+                elementId: 'localVideoModal'
             };
         }
-        
+
         if (!currentCall.activeParticipants.includes(localUserId)) {
             currentCall.activeParticipants.push(localUserId);
         }
-
-        // Send join notification
         sendWebSocketMessage({
             type: 'group-call-join',
             groupId: currentCall.groupId,
@@ -441,15 +410,12 @@ export async function acceptCall() {
         });
 
         updateCallState('active');
-
-        // Create offers to all active participants
         for (const participantId of currentCall.activeParticipants) {
             if (participantId !== localUserId) {
-                console.log(`🔄 Creating offer for participant: ${participantId}`);
                 try {
                     const participantUsername = currentCall.participants[participantId]?.username || 'Unknown User';
                     const offer = await createWebRTCOffer(participantId, participantUsername, currentCall.isVideo, currentCall.groupId);
-                    
+
                     sendWebSocketMessage({
                         type: 'group-call-offer',
                         groupId: currentCall.groupId,
@@ -459,29 +425,26 @@ export async function acceptCall() {
                         sdp: offer,
                         isVideo: currentCall.isVideo
                     });
-                    console.log(`✅ Offer sent to ${participantId}`);
                 } catch (error) {
-                    console.error(`❌ Error creating offer for ${participantId}:`, error);
+                    error
                 }
             }
         }
     } else {
-        // 1-on-1 call acceptance
         if (!currentCall.pendingOfferSdp) {
-            console.error('No pending offer for 1-on-1 call');
             updateCallState('idle');
             return;
         }
 
         try {
             const answerSdp = await handleWebRTCOfferAndCreateAnswer(
-                currentCall.peerId, 
-                currentCall.pendingOfferSdp, 
-                currentCall.participants[currentCall.peerId]?.username || 'Unknown User', 
-                currentCall.isVideo, 
+                currentCall.peerId,
+                currentCall.pendingOfferSdp,
+                currentCall.participants[currentCall.peerId]?.username || 'Unknown User',
+                currentCall.isVideo,
                 null
             );
-            
+
             sendWebSocketMessage({
                 type: 'call_answer',
                 to: currentCall.peerId,
@@ -493,30 +456,21 @@ export async function acceptCall() {
 
             updateCallState('active');
         } catch (error) {
-            console.error('❌ Error accepting 1-on-1 call:', error);
             updateCallState('idle');
         }
     }
 }
 
 export async function handleIncomingCallOffer(data) {
-    console.log(`📥 Received offer from ${data.sender_username} (${data.userId})`);
-    console.log(`🔍 Offer details: isVideo=${data.isVideo}, groupId=${data.groupId}, hasSDPContent=${!!data.sdp?.sdp}`);
-    
     if (!data.sdp || data.sdp.type !== 'offer') {
-        console.error('❌ Invalid offer received');
         return;
     }
-
-    // Handle offers when already in active group call
     if (data.groupId && currentCall.groupId === data.groupId && currentCall.callState === 'active') {
-        console.log(`🔄 Processing offer from ${data.sender_username} in active group call (isVideo: ${data.isVideo})`);
-        
         if (!currentCall.participants[data.userId]) {
-            currentCall.participants[data.userId] = { 
-                username: data.sender_username, 
-                stream: null, 
-                elementId: null 
+            currentCall.participants[data.userId] = {
+                username: data.sender_username,
+                stream: null,
+                elementId: null
             };
         }
 
@@ -525,9 +479,8 @@ export async function handleIncomingCallOffer(data) {
         }
 
         try {
-            console.log(`🔄 Creating answer with isVideo: ${data.isVideo} for ${data.sender_username}`);
             const answerSdp = await handleWebRTCOfferAndCreateAnswer(data.userId, data.sdp, data.sender_username, data.isVideo, data.groupId);
-            
+
             sendWebSocketMessage({
                 type: 'group-call-answer',
                 to: data.userId,
@@ -537,14 +490,10 @@ export async function handleIncomingCallOffer(data) {
                 isVideo: data.isVideo,
                 groupId: data.groupId
             });
-            console.log(`✅ Answer sent to ${data.sender_username} with isVideo: ${data.isVideo}`);
         } catch (error) {
-            console.error(`❌ Error processing offer from ${data.userId}:`, error);
         }
         return;
     }
-
-    // Handle new call offers
     if (currentCall.callState !== 'idle') {
         const busyType = data.groupId ? 'group-call-busy' : 'call_busy';
         sendWebSocketMessage({
@@ -556,19 +505,15 @@ export async function handleIncomingCallOffer(data) {
         });
         return;
     }
-
-    // Set up new incoming call
     currentCall.peerId = data.userId;
-    currentCall.isVideo = data.isVideo; // Make sure we preserve the isVideo value
+    currentCall.isVideo = data.isVideo;
     currentCall.pendingOfferSdp = data.sdp;
-    
-    console.log(`📞 Setting up incoming call: isVideo=${currentCall.isVideo}, groupId=${data.groupId}`);
-    
+
     if (!currentCall.participants[data.userId]) {
-        currentCall.participants[data.userId] = { 
-            username: data.sender_username, 
-            stream: null, 
-            elementId: null 
+        currentCall.participants[data.userId] = {
+            username: data.sender_username,
+            stream: null,
+            elementId: null
         };
     }
 
@@ -578,27 +523,60 @@ export async function handleIncomingCallOffer(data) {
             currentCall.activeParticipants = data.activeParticipants;
         }
     }
-    
+
     updateCallState('ringing');
 }
 
 export async function handleCallAnswer(data) {
-    console.log(`📞 Answer received from ${data.sender_username} (${data.userId})`);
-
     if (!data.sdp || data.sdp.type !== 'answer') {
-        console.error('❌ Invalid answer received');
         return;
     }
 
     try {
+        const connection = getWebRTCConnection(data.userId, data.groupId);
+        if (!connection) {
+            return;
+        }
+        if (connection.signalingState === 'have-remote-offer') {
+            if (!currentCall.pendingAnswers) {
+                currentCall.pendingAnswers = {};
+            }
+            currentCall.pendingAnswers[data.userId] = {
+                sdp: data.sdp,
+                username: data.sender_username,
+                groupId: data.groupId
+            };
+            return;
+        }
+        if (connection.signalingState === 'stable') {
+            try {
+                const offer = await createWebRTCOffer(
+                    data.userId,
+                    data.sender_username,
+                    currentCall.isVideo,
+                    data.groupId
+                );
+                sendWebSocketMessage({
+                    type: data.groupId ? 'group-call-offer' : 'call_offer',
+                    to: data.userId,
+                    userId: localStorage.getItem('userId'),
+                    sender_username: localStorage.getItem('username'),
+                    sdp: offer,
+                    isVideo: currentCall.isVideo,
+                    groupId: data.groupId
+                });
+                return;
+            } catch (error) {
+                return;
+            }
+        }
+
         await handleWebRTCAnswer(data.userId, data.sdp, data.groupId);
-        console.log(`✅ Answer processed for ${data.sender_username}`);
-        
         if (currentCall.groupId && !currentCall.participants[data.userId]) {
-            currentCall.participants[data.userId] = { 
-                username: data.sender_username, 
-                stream: null, 
-                elementId: null 
+            currentCall.participants[data.userId] = {
+                username: data.sender_username,
+                stream: null,
+                elementId: null
             };
         }
 
@@ -609,8 +587,32 @@ export async function handleCallAnswer(data) {
         if (currentCall.callState !== 'active') {
             updateCallState('active');
         }
+        if (currentCall.pendingAnswers && currentCall.pendingAnswers[data.userId]) {
+            const pendingAnswer = currentCall.pendingAnswers[data.userId];
+            delete currentCall.pendingAnswers[data.userId];
+            handleCallAnswer({
+                userId: data.userId,
+                sender_username: pendingAnswer.username,
+                sdp: pendingAnswer.sdp,
+                groupId: pendingAnswer.groupId
+            });
+        }
     } catch (error) {
-        console.error(`❌ Error handling answer from ${data.userId}:`, error);
+        if (currentCall.groupId && currentCall.callState === 'active') {
+            try {
+                const offer = await createWebRTCOffer(data.userId, data.sender_username, currentCall.isVideo, currentCall.groupId);
+                sendWebSocketMessage({
+                    type: 'group-call-offer',
+                    groupId: currentCall.groupId,
+                    to: data.userId,
+                    userId: localStorage.getItem('userId'),
+                    sender_username: localStorage.getItem('username'),
+                    sdp: offer,
+                    isVideo: currentCall.isVideo
+                });
+            } catch (renegotiateError) {
+            }
+        }
     }
 }
 
@@ -619,24 +621,24 @@ export async function handleGroupCallJoin(data) {
         return;
     }
 
-    console.log(`👥 ${data.sender_username} joined group call`);
-    
     if (!currentCall.participants[data.userId]) {
-        currentCall.participants[data.userId] = { 
-            username: data.sender_username, 
-            stream: null, 
-            elementId: null 
+        currentCall.participants[data.userId] = {
+            username: data.sender_username,
+            stream: null,
+            elementId: null
         };
     }
 
     if (!currentCall.activeParticipants.includes(data.userId)) {
         currentCall.activeParticipants.push(data.userId);
     }
-
-    // Send offer to new participant if we're active
     if (currentCall.callState === 'active') {
-        console.log(`🔄 Sending offer to new participant ${data.sender_username}`);
         try {
+            const connection = getWebRTCConnection(data.userId, data.groupId);
+            if (connection && connection.signalingState !== 'stable') {
+                return;
+            }
+
             const offer = await createWebRTCOffer(data.userId, data.sender_username, currentCall.isVideo, currentCall.groupId);
             sendWebSocketMessage({
                 type: 'group-call-offer',
@@ -647,15 +649,10 @@ export async function handleGroupCallJoin(data) {
                 sdp: offer,
                 isVideo: currentCall.isVideo
             });
-            console.log(`✅ Offer sent to ${data.sender_username}`);
         } catch (error) {
-            console.error(`❌ Error creating offer for ${data.userId}:`, error);
         }
     } else if (currentCall.callState === 'initiating') {
-        // Initiator transitions to active when first participant joins
         updateCallState('active');
-        
-        // Send offer to joiner
         try {
             const offer = await createWebRTCOffer(data.userId, data.sender_username, currentCall.isVideo, currentCall.groupId);
             sendWebSocketMessage({
@@ -667,20 +664,15 @@ export async function handleGroupCallJoin(data) {
                 sdp: offer,
                 isVideo: currentCall.isVideo
             });
-            console.log(`✅ Initiator offer sent to ${data.sender_username}`);
         } catch (error) {
-            console.error(`❌ Error creating initiator offer for ${data.userId}:`, error);
         }
     }
 }
 
 export function handleICECandidate(data) {
     if (!data.userId || !data.candidate) {
-        console.warn('Invalid ICE candidate received');
         return;
     }
-    
-    // For group calls, accept candidates from group participants
     if (data.groupId && currentCall.groupId === data.groupId) {
         if (!currentCall.activeParticipants.includes(data.userId)) {
             currentCall.activeParticipants.push(data.userId);
@@ -692,35 +684,35 @@ export function handleICECandidate(data) {
                 };
             }
         }
-        console.log(`🧊 ICE candidate from ${data.userId}`);
         handleWebRTCCandidate(data.userId, data.candidate, data.groupId);
         return;
     }
-    
-    // For 1-on-1 calls, check 'to' field
     if (!data.groupId && data.to === localStorage.getItem('userId')) {
-        console.log(`🧊 ICE candidate from ${data.userId} (1-on-1)`);
         handleWebRTCCandidate(data.userId, data.candidate, null);
     }
 }
 
 export function addRemoteStream(userId, stream, username, groupId, isVideo) {
-    console.log(`🎥 Adding stream for ${username || userId} (isVideo: ${isVideo})`);
-    
-    // Debug stream tracks
-    const videoTracks = stream.getVideoTracks();
-    const audioTracks = stream.getAudioTracks();
-    console.log(`📊 Stream analysis for ${username}:`);
-    console.log(`   - Video tracks: ${videoTracks.length}`, videoTracks.map(t => ({enabled: t.enabled, readyState: t.readyState})));
-    console.log(`   - Audio tracks: ${audioTracks.length}`, audioTracks.map(t => ({enabled: t.enabled, readyState: t.readyState})));
-    console.log(`   - Actual isVideo determination: hasVideo=${videoTracks.length > 0}, originalIsVideo=${isVideo}`);
-
     const localUserId = localStorage.getItem('userId');
     const isLocalUser = userId === localUserId;
 
     if (isLocalUser) {
-        console.log(`🚫 Skipping addRemoteStream for local user ${username}`);
         return;
+    }
+
+    if (currentCall.participants[userId] && currentCall.participants[userId].stream) {
+        const existingStream = currentCall.participants[userId].stream;
+        const existingTracks = existingStream.getTracks();
+        const allTracksActive = existingTracks.every(track => track.readyState === 'live');
+        
+        if (allTracksActive && existingTracks.length > 0) {
+            return;
+        } else {
+            const existingWrapper = document.getElementById(currentCall.participants[userId].wrapperElementId);
+            if (existingWrapper) {
+                existingWrapper.remove();
+            }
+        }
     }
 
     if (!currentCall.participants[userId]) {
@@ -732,57 +724,47 @@ export function addRemoteStream(userId, stream, username, groupId, isVideo) {
         };
     }
 
-    if (currentCall.participants[userId].stream && !isLocalUser) {
-        console.log(`Stream already exists for ${userId}`);
+    const callType = groupId || 'peer';
+    const elementId = `remote-${userId}-${callType}`;
+    const wrapperElementId = `wrapper-${elementId}`;
+
+    const existingWrapper = document.getElementById(wrapperElementId);
+    if (existingWrapper) {
+        existingWrapper.remove();
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.id = wrapperElementId;
+    wrapper.classList.add('participant-wrapper');
+    
+    const isOneOnOne = !groupId;
+    wrapper.style.cssText = `
+        position: relative;
+        margin: 5px;
+        border-radius: 8px;
+        overflow: hidden;
+        background: #333;
+        min-width: ${isOneOnOne ? '200px' : '150px'};
+        min-height: ${isOneOnOne ? '150px' : '100px'};
+        ${isOneOnOne ? 'max-width: 300px; max-height: 220px;' : ''}
+        border: 2px solid #34495e;
+        ${isOneOnOne ? 'flex: 1;' : ''}
+    `;
+
+    if (remoteStreamsContainer) {
+        remoteStreamsContainer.appendChild(wrapper);
+    } else {
         return;
     }
 
-    // For 1-on-1 calls, use 'peer' as groupId for consistent element IDs
-    const callType = groupId || 'peer';
-    const elementId = `${isLocalUser ? 'local' : 'remote'}-${userId}-${callType}`;
-    const wrapperElementId = `wrapper-${elementId}`;
-
-    let wrapper = document.getElementById(wrapperElementId);
-    if (wrapper) {
-        wrapper.innerHTML = '';
-    } else {
-        wrapper = document.createElement('div');
-        wrapper.id = wrapperElementId;
-        wrapper.classList.add('participant-wrapper');
-        if (isLocalUser) wrapper.classList.add('local-participant');
-        
-        // Adjust wrapper size for 1-on-1 calls (larger) vs group calls (smaller grid)
-        const isOneOnOne = !groupId;
-        wrapper.style.cssText = `
-            position: relative;
-            margin: 5px;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #333;
-            min-width: ${isOneOnOne ? '200px' : '150px'};
-            min-height: ${isOneOnOne ? '150px' : '100px'};
-            ${isOneOnOne ? 'max-width: 300px; max-height: 220px;' : ''}
-            border: 2px solid ${isLocalUser ? '#3498db' : '#34495e'};
-            ${isOneOnOne ? 'flex: 1;' : ''}
-        `;
-
-        if (remoteStreamsContainer) {
-            remoteStreamsContainer.appendChild(wrapper);
-        } else {
-            console.error('❌ remoteStreamsContainer not found');
-            return;
-        }
-    }
-
-    // Create name overlay
     const nameOverlay = document.createElement('div');
     nameOverlay.classList.add('participant-name-overlay');
-    nameOverlay.textContent = isLocalUser ? `${username} (You)` : username;
+    nameOverlay.textContent = username;
     nameOverlay.style.cssText = `
         position: absolute;
         bottom: 5px;
         left: 5px;
-        background: ${isLocalUser ? 'rgba(52,152,219,0.9)' : 'rgba(0,0,0,0.7)'};
+        background: rgba(0,0,0,0.7);
         color: white;
         padding: 2px 6px;
         border-radius: 4px;
@@ -797,58 +779,27 @@ export function addRemoteStream(userId, stream, username, groupId, isVideo) {
         mediaElement = document.createElement('video');
         mediaElement.autoplay = true;
         mediaElement.playsinline = true;
-        mediaElement.muted = isLocalUser;
-        mediaElement.classList.add(isLocalUser ? 'local-video' : 'remote-video');
+        mediaElement.muted = false; // Don't mute remote video
+        mediaElement.classList.add('remote-video');
         mediaElement.style.cssText = `
             width: 100%;
             height: 100%;
             object-fit: cover;
             background: #000;
-            ${isLocalUser ? 'transform: scaleX(-1);' : ''}
         `;
-        
-        // Add event listeners for debugging video issues
-        mediaElement.addEventListener('loadedmetadata', () => {
-            console.log(`📺 Video metadata loaded for ${username}: ${mediaElement.videoWidth}x${mediaElement.videoHeight}`);
-        });
-        
-        mediaElement.addEventListener('canplay', () => {
-            console.log(`📺 Video can play for ${username}`);
-        });
-        
-        mediaElement.addEventListener('error', (e) => {
-            console.error(`📺 Video error for ${username}:`, e);
-        });
         
     } else {
         mediaElement = document.createElement('audio');
         mediaElement.autoplay = true;
-        mediaElement.muted = isLocalUser;
-        mediaElement.classList.add(isLocalUser ? 'local-audio' : 'remote-audio');
+        mediaElement.muted = false; // Don't mute remote audio
+        mediaElement.classList.add('remote-audio');
         
-        // Add event listeners for debugging audio issues
-        mediaElement.addEventListener('loadedmetadata', () => {
-            console.log(`🔊 Audio metadata loaded for ${username}`);
-        });
-        
-        mediaElement.addEventListener('canplay', () => {
-            console.log(`🔊 Audio can play for ${username}`);
-        });
-        
-        mediaElement.addEventListener('error', (e) => {
-            console.error(`🔊 Audio error for ${username}:`, e);
-        });
-        
-        // Audio visual placeholder - different gradients for 1-on-1 vs group
         const audioPlaceholder = document.createElement('div');
         const isOneOnOne = !groupId;
         audioPlaceholder.style.cssText = `
             width: 100%;
             height: 100%;
-            background: ${isLocalUser 
-                ? (isOneOnOne ? 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)' : 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)')
-                : (isOneOnOne ? 'linear-gradient(135deg, #e74c3c 0%, #c0392b 100%)' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)')
-            };
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -859,11 +810,10 @@ export function addRemoteStream(userId, stream, username, groupId, isVideo) {
         `;
         audioPlaceholder.innerHTML = `
             <div>
-                <div style="font-size: ${isOneOnOne ? '48px' : '24px'}; margin-bottom: 10px;">${isLocalUser ? '🎤' : '🎵'}</div>
-                <div style="font-weight: bold; margin-bottom: 5px;">${isLocalUser ? `${username} (You)` : username}</div>
+                <div style="font-size: ${isOneOnOne ? '48px' : '24px'}; margin-bottom: 10px;">🎵</div>
+                <div style="font-weight: bold; margin-bottom: 5px;">${username}</div>
                 <div style="font-size: ${isOneOnOne ? '12px' : '10px'}; opacity: 0.8;">
-                    ${isLocalUser ? 'Speaking' : 'Audio'}
-                    ${isOneOnOne ? ' • 1-on-1 Call' : ' • Group Call'}
+                    Audio ${isOneOnOne ? ' • 1-on-1 Call' : ' • Group Call'}
                 </div>
             </div>
         `;
@@ -874,29 +824,42 @@ export function addRemoteStream(userId, stream, username, groupId, isVideo) {
     mediaElement.srcObject = stream;
     
     // Force video/audio to start playing
-    mediaElement.play().catch(e => {
-        console.warn(`▶️ Autoplay prevented for ${username}:`, e);
-        // Try to play again after user interaction
-        if (!isLocalUser) {
-            document.addEventListener('click', () => {
-                mediaElement.play().catch(console.error);
-            }, { once: true });
-        }
-    });
+    const playPromise = mediaElement.play();
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+        }).catch(e => {
+            const playButton = document.createElement('button');
+            playButton.textContent = '▶️ Play';
+            playButton.style.cssText = `
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                z-index: 20;
+                padding: 10px;
+                background: rgba(52, 152, 219, 0.9);
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            `;
+            playButton.onclick = () => {
+                mediaElement.play().then(() => {
+                    playButton.remove();
+                }).catch(console.error);
+            };
+            wrapper.appendChild(playButton);
+        });
+    }
     
     wrapper.appendChild(mediaElement);
-
-    // Update participant record
     currentCall.participants[userId].stream = stream;
     currentCall.participants[userId].elementId = elementId;
     currentCall.participants[userId].wrapperElementId = wrapperElementId;
 
-    // Add to active participants list
     if (!currentCall.activeParticipants.includes(userId)) {
         currentCall.activeParticipants.push(userId);
     }
-
-    console.log(`✅ Stream UI created for ${username || userId} (${isLocalUser ? 'local' : 'remote'})`);
 }
 
 export function rejectCall() {
@@ -943,16 +906,12 @@ export function endCall() {
     setWebRTCLocalStream(null);
     updateCallState('idle');
 }
-
-// Simplified handlers for other events
 export function handleCallRejected(data) {
-    console.log(`❌ Call rejected by ${data.sender_username}`);
     if (callStatus) callStatus.textContent = `Call rejected by ${data.sender_username}.`;
     setTimeout(() => updateCallState('idle'), 3000);
 }
 
 export function handleCallBusy(data) {
-    console.log(`📞 ${data.sender_username} is busy`);
     if (callStatus) callStatus.textContent = `${data.sender_username} is busy.`;
     setTimeout(() => updateCallState('idle'), 3000);
 }
@@ -962,22 +921,19 @@ export function handleGroupCallLeave(data) {
         return;
     }
 
-    console.log(`👋 ${data.sender_username} left group call`);
-    
     const wrapper = document.getElementById(`wrapper-remote-${data.userId}-${data.groupId}`);
     if (wrapper) wrapper.remove();
-    
+
     if (currentCall.participants[data.userId]) {
         delete currentCall.participants[data.userId];
     }
-    
+
     currentCall.activeParticipants = currentCall.activeParticipants.filter(id => id !== data.userId);
     closeWebRTCConnection(data.userId, data.groupId);
 }
 
 export function handleGroupCallEnded(data) {
     if (currentCall.groupId && currentCall.groupId == data.groupId) {
-        console.log(`📞 Group call ended`);
         if (callStatus) callStatus.textContent = 'Group call ended.';
         closeAllWebRTCConnections(currentCall.groupId);
         updateCallState('idle');
@@ -986,7 +942,6 @@ export function handleGroupCallEnded(data) {
 
 export function handleCallEnded(data) {
     if (!data.groupId && currentCall.peerId == data.userId) {
-        console.log(`📞 Call ended by ${data.sender_username}`);
         if (callStatus) callStatus.textContent = `Call ended.`;
         updateCallState('idle');
     }
@@ -995,8 +950,6 @@ export function handleCallEnded(data) {
 export function handleGroupCallBusy(data) {
     console.log(`📞 ${data.sender_username} is busy for group call`);
 }
-
-// Event Listeners
 if (acceptCallButton) acceptCallButton.addEventListener('click', acceptCall);
 if (rejectCallButton) rejectCallButton.addEventListener('click', rejectCall);
 if (endCallButtonModal) endCallButtonModal.addEventListener('click', endCall);
@@ -1009,6 +962,7 @@ if (toggleMicrophoneButton) {
             audioTrack.enabled = !audioTrack.enabled;
             toggleMicrophoneButton.textContent = audioTrack.enabled ? 'Mute Mic' : 'Unmute Mic';
             toggleMicrophoneButton.classList.toggle('muted', !audioTrack.enabled);
+
         }
     });
 }
@@ -1024,8 +978,16 @@ if (toggleCameraButton) {
         }
     });
 }
-
-// Initialize call state
 updateCallState('idle');
 
-console.log('✅ Call handler initialized with streamlined group call support');
+window.addRemoteStream = addRemoteStream;
+const addRemoteStreamDebounced = {};
+window.addRemoteStreamSafe = function (userId, stream, username, groupId, isVideo) {
+    if (addRemoteStreamDebounced[userId]) {
+        clearTimeout(addRemoteStreamDebounced[userId]);
+    }
+    addRemoteStreamDebounced[userId] = setTimeout(() => {
+        addRemoteStream(userId, stream, username, groupId, isVideo);
+        delete addRemoteStreamDebounced[userId];
+    }, 50);
+};

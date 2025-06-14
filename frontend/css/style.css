@@ -11,9 +11,9 @@
 }
 
 body {
- min-height: 100svh;
- display: flex;
- flex-direction: column;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
 }
 
 .main-body{
@@ -93,17 +93,13 @@ a:hover {
 }
 
 .notification.info {
-    background-color: #2196F3; /* Blue */
-}
+    background-color: #2196F3; }
 
 .notification.success {
-    background-color: #4CAF50; /* Green */
-}
+    background-color: #4CAF50; }
 
 .notification.warning {
-    background-color: #ff9800; /* Orange */
-}
+    background-color: #ff9800; }
 
 .notification.error {
-    background-color: #f44336; /* Red */
-}
+    background-color: #f44336; }

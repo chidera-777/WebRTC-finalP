@@ -37,8 +37,7 @@ async def send_message_api(
     }
     
     await manager.send_personal_message(websocket_message, message_in.receiver_id)
-    # await manager.send_personal_message(websocket_message, current_user.id)
-    
+        
     return db_message
 
 @router.get("/{friend_id}", response_model=List[schemas.Message])

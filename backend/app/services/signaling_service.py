@@ -7,23 +7,19 @@ from ..db import models
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[int, WebSocket] = {}
-        self.active_group_calls: Dict[int, List[int]] = {}  # group_id -> list of user_ids in call
-
+        self.active_group_calls: Dict[int, List[int]] = {}  
     async def connect(self, websocket: WebSocket, user_id: int):
         await websocket.accept()
         self.active_connections[user_id] = websocket
-        print(f"User {user_id} connected via WebSocket")
 
     def disconnect(self, user_id: int):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
-            print(f"User {user_id} disconnected from WebSocket")
         
-        # Clean up from any active group calls
         for group_id, participants in list(self.active_group_calls.items()):
             if user_id in participants:
                 participants.remove(user_id)
-                if not participants:  # If no participants left, remove the group call
+                if not participants:                      
                     del self.active_group_calls[group_id]
 
     def is_user_connected(self, user_id: int) -> bool:
@@ -36,39 +32,32 @@ class ConnectionManager:
             try:
                 await websocket.send_text(json.dumps(message))
             except Exception as e:
-                print(f"Error sending message to user {user_id}: {e}")
-                # Optionally remove the connection if it's broken
                 self.disconnect(user_id)
 
     async def broadcast(self, message: dict, sender_user_id: Optional[int] = None):
         """Broadcast message to all connected users except the sender"""
         for user_id, websocket in list(self.active_connections.items()):
             if sender_user_id and user_id == sender_user_id:
-                continue  # Don't send to sender
+                continue              
             try:
                 await websocket.send_text(json.dumps(message))
             except Exception as e:
-                print(f"Error broadcasting to user {user_id}: {e}")
                 self.disconnect(user_id)
 
     async def broadcast_to_group(self, db: Session, group_id: int, message: dict, sender_user_id: Optional[int] = None):
         """Broadcast message to all members of a specific group"""
-        # Get all group members
         group_members = db.query(models.GroupMember).filter(models.GroupMember.group_id == group_id).all()
         
         for member in group_members:
             if sender_user_id and member.user_id == sender_user_id:
-                continue  # Don't send to sender
-            
+                continue              
             if member.user_id in self.active_connections:
                 try:
                     await self.active_connections[member.user_id].send_text(json.dumps(message))
                 except Exception as e:
-                    print(f"Error sending group message to user {member.user_id}: {e}")
                     self.disconnect(member.user_id)
 
-    # Group Call Management Methods
-    
+        
     async def start_group_call(self, group_id: int, initiator_user_id: int):
         """Initialize a group call with the initiator"""
         if group_id not in self.active_group_calls:
@@ -76,8 +65,6 @@ class ConnectionManager:
         
         if initiator_user_id not in self.active_group_calls[group_id]:
             self.active_group_calls[group_id].append(initiator_user_id)
-        
-        print(f"Group call started for group {group_id} by user {initiator_user_id}")
 
     async def join_group_call(self, group_id: int, user_id: int):
         """Add a user to an active group call"""
@@ -87,21 +74,16 @@ class ConnectionManager:
         if user_id not in self.active_group_calls[group_id]:
             self.active_group_calls[group_id].append(user_id)
         
-        print(f"User {user_id} joined group call {group_id}. Active participants: {self.active_group_calls[group_id]}")
-        return self.active_group_calls[group_id]  # Return the updated list
-
+        return self.active_group_calls[group_id]  
     async def leave_group_call(self, group_id: int, user_id: int) -> str:
         """Remove a user from a group call. Returns 'ended' if call ended, 'left' if user just left"""
         if group_id in self.active_group_calls and user_id in self.active_group_calls[group_id]:
             self.active_group_calls[group_id].remove(user_id)
             
-            # If no participants left, end the call
             if not self.active_group_calls[group_id]:
                 del self.active_group_calls[group_id]
-                print(f"Group call {group_id} ended - no participants remaining")
                 return "ended"
             else:
-                print(f"User {user_id} left group call {group_id}. Remaining participants: {self.active_group_calls[group_id]}")
                 return "left"
         
         return "not_in_call"
@@ -117,24 +99,17 @@ class ConnectionManager:
     async def send_to_group_call_participants(self, group_id: int, message: dict, sender_user_id: Optional[int] = None):
         """Send message to all active participants in a group call"""
         if group_id not in self.active_group_calls:
-            print(f"No active group call found for group {group_id}")
             return
 
         participants = self.active_group_calls[group_id]
-        print(f"Sending message to group call {group_id} participants: {participants}")
-        
         for participant_id in participants:
             if sender_user_id and participant_id == sender_user_id:
-                continue  # Don't send to sender
-            
+                continue              
             if participant_id in self.active_connections:
                 try:
                     await self.active_connections[participant_id].send_text(json.dumps(message))
-                    print(f"Sent message to participant {participant_id} in group call {group_id}")
                 except Exception as e:
-                    print(f"Error sending message to group call participant {participant_id}: {e}")
                     self.disconnect(participant_id)
-                    # Remove from group call if connection failed
                     if participant_id in self.active_group_calls[group_id]:
                         self.active_group_calls[group_id].remove(participant_id)
 
@@ -146,5 +121,4 @@ class ConnectionManager:
         """Get number of participants in a group call"""
         return len(self.active_group_calls.get(group_id, []))
 
-# Create global instance
 manager = ConnectionManager()

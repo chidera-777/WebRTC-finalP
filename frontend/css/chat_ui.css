@@ -20,8 +20,8 @@ header h2 {
 }
 
 header p {
-float: right;
-margin: 5px 0;
+    float: right;
+    margin: 5px 0;
 }
 
 .main-container {
@@ -76,8 +76,7 @@ margin: 5px 0;
     list-style-type: none;
     padding: 0;
     margin: 0;
-    flex-grow: 1; /* Allow list to take available space */
-}
+    flex-grow: 1; }
 
 
 .current-chat-area{
@@ -124,8 +123,7 @@ margin: 5px 0;
 .delete-contact-btn {
     background-color: transparent;
     border: none;
-    color: #ff4d4d; /* Red color for delete */
-    font-size: 1.2em;
+    color: #ff4d4d;     font-size: 1.2em;
     font-weight: bold;
     cursor: pointer;
     padding: 10px;
@@ -218,17 +216,19 @@ margin: 5px 0;
     font-size: 1.5em;
 }
 
-/* Styles for Group Settings Panel */
+#user-search-section-modal{
+    margin-top: 10px;
+}
+
 .groupSettingsPanel {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
-    background-color: #f9f9f9; /* Light background for the settings panel */
-}
+    background-color: #f9f9f9; }
 
 .group-settings-header {
     padding: 15px 20px;
-    background-color: #ededed; /* Slightly different header background */
+    background-color: #ededed;     
     border-bottom: 1px solid #ddd;
     display: flex;
     justify-content: space-between;
@@ -277,7 +277,7 @@ margin: 5px 0;
 
 .settings-section input[type="text"],
 .settings-section select {
-    width: calc(100% - 22px); /* Full width minus padding/border */
+    width: calc(100% - 22px);     
     padding: 10px;
     margin-bottom: 10px;
     border: 1px solid #ccc;
@@ -335,7 +335,6 @@ margin: 5px 0;
 }
 
 
-/* Change Role Modal Specifics */
 #changeRoleModal .modal-content {
     max-width: 400px;
 }
@@ -360,7 +359,6 @@ margin: 5px 0;
 }
 
 
-/* Call Modal Styles */
 .call-buttons button {
     margin-left: 10px;
     background: none;
@@ -494,8 +492,7 @@ margin: 5px 0;
     border-radius: 5px;
     display: flex;
     flex-direction: column;
-    height: 300px; /* Example height */
-}
+    height: 300px; }
 
 #chatMessages {
     flex-grow: 1;
@@ -558,7 +555,6 @@ margin: 5px 0;
 
 
 
-/* Enhanced Call Modal Styles */
 .call-modal-content {
     background-color: #2c3e50;
     color: #ecf0f1;
@@ -663,12 +659,6 @@ margin: 5px 0;
     min-height: 120px;
 }
 
-/* .remote-audio-placeholder::before {
-    content: "\1F3A4";
-    font-size: 3em;
-    margin-bottom: 10px;
-    opacity: 0.7;
-} */
 
 .participant-name-overlay {
     position: absolute !important;
@@ -739,15 +729,6 @@ margin: 5px 0;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.call-control-button:not(.accept-call):not(.reject-call):not(.end-call) {
-    background: linear-gradient(135deg, #34495e, #2c3e50);
-    color: white;
-}
-
-.call-control-button:not(.accept-call):not(.reject-call):not(.end-call):hover {
-    background: linear-gradient(135deg, #2c3e50, #34495e);
-}
-
 .accept-call {
     background: linear-gradient(135deg, #27ae60, #2ecc71);
     color: white;
@@ -766,20 +747,8 @@ margin: 5px 0;
     background: linear-gradient(135deg, #c0392b, #e74c3c);
 }
 
-#toggleMicrophoneButton, #toggleCameraButton {
-    background-color: #3498db;
-    color: white;
-}
-#toggleMicrophoneButton:hover, #toggleCameraButton:hover {
-    background-color: #2980b9;
-}
-
-.call-control-button.muted {
-    background: linear-gradient(135deg, #f39c12, #e67e22);
-}
-
-.call-control-button.hidden-cam {
-    background: linear-gradient(135deg, #f39c12, #e67e22);
+.call-control-button.muted, .call-control-button.hidden-cam {
+    background-color: #7a7977;
 }
 
 #createGroupForm .form-group {
@@ -797,8 +766,7 @@ margin: 5px 0;
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
-    box-sizing: border-box; /* Include padding and border in the element's total width and height */
-}
+    box-sizing: border-box; }
 
 #createGroupForm button[type="submit"] {
     color: white;
@@ -809,10 +777,183 @@ margin: 5px 0;
     font-size: 1em;
 }
 
+.back-to-chat-list-btn {
+    display: none;
+}
+
 
 
 @media screen and (max-width: 768px) {
+    .main-container {
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    #chat-list-panel {
+        width: 100%;
+        height: 100%;
+        min-width: unset;
+        border-right: none;
+        position: absolute;         
+        top: 0;
+        left: 0;
+        z-index: 20;         
+        background-color: #f7f7f7;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(0%);
+    }
+
+    #active-chat-panel {
+        width: 100%;
+        height: 100%;
+        position: absolute;         
+        top: 0;
+        left: 0;
+        z-index: 10;
+        background-color: #e5ddd5;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s ease-in-out;
+        transform: translateX(100%);     
+    }
+
+    body.mobile-chat-view-active #chat-list-panel {
+        transform: translateX(-100%);
+    }
+
+    body.mobile-chat-view-active #active-chat-panel {
+        transform: translateX(0%);         
+        z-index: 30;
+    }
+
+    .chat-list-panel-inner,
+    .active-chat-panel-inner {
+        position: relative;         
+        height: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #chatMessages {
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+
+    #chatForm {
+        left: 0; 
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .active-chat-header {
+        left: 0;
+        width: 100%;
+        box-sizing: border-box;
+    }
     
+    .active-chat-header .back-to-chat-list-btn {
+        display: none; 
+        margin-right: 10px;
+        font-size: 1.5em;
+        border: none;
+        cursor: pointer;
+    }
+
+    body.mobile-chat-view-active .active-chat-header .back-to-chat-list-btn {
+        display: inline-block;
+    }
+
+    body {
+        font-size: 16px;
+    }
+
+    .chat-list-header h3 {
+        font-size: 1.1em;
+    }
+
+    #activeChatPartnerName {
+        font-size: 1em;
+    }
+
+    .chat-message {
+        max-width: 85%;
+        font-size: 0.95em;
+    }
+
+    .modal-content {
+        width: 90%;
+        margin: 10% auto;
+        padding: 15px;
+    }
+
+    #addContactModal .modal-content,
+    #createGroupModal .modal-content,
+    #changeRoleModal .modal-content {
+        max-width: 90%;
+    }
+
+    .call-modal-content {
+        width: 95%;
+        margin: 5% auto;
+        padding: 15px;
+    }
+
+    #localVideoModal, #localUserPlaceholder {
+        width: 120px;
+        height: 90px;
+    }
+
+    .participant-wrapper {
+        min-width: 120px;
+        min-height: 90px;
+        max-width: 180px;
+        max-height: 135px;
+    }
+
+    .call-control-button {
+        padding: 10px 15px;
+        font-size: 0.9em;
+    }
+
+    header p {
+        float: none;
+        display: block;
+        text-align: right;
+        margin: 5px 0;
+    }
+
+    .logout-container {
+        padding: 5px;
+    }
+
+    #chatInput {
+        padding: 8px;
+        font-size: 1em;
+    }
+
+    #chatForm button {
+        padding: 8px 15px;
+        font-size: 1em;
+    }
+
+    .call-buttons button {
+        font-size: 1.3em;
+        margin-left: 8px;
+    }
+
+    header {
+        position: relative;
+        z-index: 40;
+    }
+    
+    .logout-container {
+        position: relative;
+        z-index: 40;
+    }
 }
 
 @keyframes participantJoin {
