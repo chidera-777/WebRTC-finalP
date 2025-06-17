@@ -15,7 +15,8 @@ router = APIRouter(
 
 @router.get("/search", response_model=List[schemas.UserSearchResult])
 def search_users_api(
-    query: str, 
+    query: str,
+    for_group: bool = False,
     db: Session = Depends(database.get_db),
     current_user: models.User = Depends(get_current_active_user)
 ):
@@ -24,7 +25,7 @@ def search_users_api(
     """
     if not query.strip():
         raise HTTPException(status_code=400, detail="Search query cannot be empty")
-    users = contact_service.search_users(db=db, current_user_id=current_user.id, username_query=query)
+    users = contact_service.search_users(db=db, current_user_id=current_user.id, username_query=query, for_group=for_group)
     return users
 
 @router.post("/add", response_model=schemas.Contact)

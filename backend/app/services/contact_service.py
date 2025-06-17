@@ -5,21 +5,22 @@ from typing import List
 from ..db import models, schemas
 
 class ContactService:
-    def search_users(self, db: Session, current_user_id: int, username_query: str) -> List[models.User]:
+    def search_users(self, db: Session, current_user_id: int, username_query: str, for_group:bool = False) -> List[models.User]:
         """
         Search for users by username, excluding the current user and users already in contacts.
         """
         if not username_query:
             return []
-
-        existing_contact_friend_ids = db.query(models.Contact.friend_id).filter(models.Contact.user_id == current_user_id).all()
-        existing_contact_user_ids = db.query(models.Contact.user_id).filter(models.Contact.friend_id == current_user_id).all()
         
         exclude_ids = {current_user_id}
-        for fid in existing_contact_friend_ids:
-            exclude_ids.add(fid[0])
-        for uid in existing_contact_user_ids:
-            exclude_ids.add(uid[0])
+        if not for_group:
+            existing_contact_friend_ids = db.query(models.Contact.friend_id).filter(models.Contact.user_id == current_user_id).all()
+            existing_contact_user_ids = db.query(models.Contact.user_id).filter(models.Contact.friend_id == current_user_id).all()
+            
+            for fid in existing_contact_friend_ids:
+                exclude_ids.add(fid[0])
+            for uid in existing_contact_user_ids:
+                exclude_ids.add(uid[0])
 
         return db.query(models.User).filter(
             models.User.username.contains(username_query),

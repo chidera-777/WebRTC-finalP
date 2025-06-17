@@ -17,6 +17,7 @@ const currentCall = {
     type: null,
     peerId: null,
     groupId: null,
+    groupName: null,
     recipients: [],
     isVideo: false,
     callState: 'idle',
@@ -152,7 +153,7 @@ function addLocalUserDisplay(userId, stream, username, groupId, isVideo) {
     wrapper.appendChild(mediaElement);
 }
 
-function updateCallState(newState) {
+export function updateCallState(newState) {
     currentCall.callState = newState;
     localVideoModal.style.display = 'none';
     if (localUserPlaceholder) localUserPlaceholder.style.display = 'none';
@@ -175,6 +176,7 @@ function updateCallState(newState) {
             activeCallActions.style.display = 'block';
             currentCall.peerId = null;
             currentCall.groupId = null;
+            currentCall.groupName = null;
             currentCall.recipients = [];
             currentCall.participants = {};
             currentCall.activeParticipants = [];
@@ -197,8 +199,9 @@ function updateCallState(newState) {
             toggleCameraButton.style.display = currentCall.isVideo ? 'inline-block' : 'none';
 
             let title = currentCall.isVideo ? 'Video Call' : 'Audio Call';
+            
             if (currentCall.groupId) {
-                title = `Group ${title}`;
+                title = `${currentCall.groupName} Group ${title}`;
             }
             callModalTitle.textContent = title;
             callStatus.textContent = 'Starting call...';
@@ -213,7 +216,7 @@ function updateCallState(newState) {
 
             let incomingTitle = `Incoming ${currentCall.isVideo ? 'Video' : 'Audio'} Call`;
             if (currentCall.groupId) {
-                incomingTitle = `Incoming Group ${currentCall.isVideo ? 'Video' : 'Audio'} Call`;
+                incomingTitle = `Incoming Group ${currentCall.isVideo ? 'Video' : 'Audio'} Call (${currentCall.groupName})`;
             }
             callModalTitle.textContent = incomingTitle;
             callStatus.textContent = 'Incoming call...';
@@ -228,7 +231,7 @@ function updateCallState(newState) {
 
             let activeTitle = `${currentCall.isVideo ? 'Video' : 'Audio'} Call`;
             if (currentCall.groupId) {
-                activeTitle = `Group ${activeTitle}`;
+                activeTitle = `${currentCall.groupName} Group ${activeTitle}`;
             }
             addLocalStreamPlaceholder();
 
@@ -269,7 +272,6 @@ export async function initiateCall(callDetails, username, isVideoCall) {
     if (!stream) return;
 
     currentCall.isVideo = isVideoCall;
-    updateCallState('initiating');
 
     if (callDetails.targetUserId) { // 1-on-1 Call
         currentCall.peerId = callDetails.targetUserId;
@@ -294,6 +296,7 @@ export async function initiateCall(callDetails, username, isVideoCall) {
         }
     } else if (callDetails.groupId && callDetails.recipients) { // Group Call
         currentCall.groupId = callDetails.groupId;
+        currentCall.groupName = callDetails.groupName;
         const validRecipients = callDetails.recipients.filter(r => r && r.user_id !== undefined);
 
         if (validRecipients.length === 0) {
@@ -320,15 +323,17 @@ export async function initiateCall(callDetails, username, isVideoCall) {
                 };
             }
         });
-
         sendWebSocketMessage({
             type: 'group-call-start',
             groupId: currentCall.groupId,
+            groupName: currentCall.groupName,
             userId: localUserId,
             sender_username: localStorage.getItem('username'),
             isVideo: currentCall.isVideo
         });
     }
+    
+    updateCallState('initiating');
 }
 
 export function handleGroupCallStart(data) {
@@ -349,6 +354,8 @@ export function handleGroupCallStart(data) {
     }
 
     currentCall.groupId = data.groupId;
+    currentCall.groupName = data.groupName;
+    console.log(data.groupName);
     currentCall.peerId = data.userId;
     currentCall.isVideo = data.isVideo;
     currentCall.pendingOfferSdp = null;
@@ -404,6 +411,7 @@ export async function acceptCall() {
         sendWebSocketMessage({
             type: 'group-call-join',
             groupId: currentCall.groupId,
+            groupName: currentCall.groupName,
             userId: localUserId,
             sender_username: localStorage.getItem('username'),
             isVideo: currentCall.isVideo
@@ -419,6 +427,7 @@ export async function acceptCall() {
                     sendWebSocketMessage({
                         type: 'group-call-offer',
                         groupId: currentCall.groupId,
+                        groupName: currentCall.groupName,
                         to: participantId,
                         userId: localUserId,
                         sender_username: localStorage.getItem('username'),
@@ -519,6 +528,7 @@ export async function handleIncomingCallOffer(data) {
 
     if (data.groupId) {
         currentCall.groupId = data.groupId;
+        currentCall.groupName = data.groupName;
         if (data.activeParticipants) {
             currentCall.activeParticipants = data.activeParticipants;
         }
@@ -563,7 +573,8 @@ export async function handleCallAnswer(data) {
                     sender_username: localStorage.getItem('username'),
                     sdp: offer,
                     isVideo: currentCall.isVideo,
-                    groupId: data.groupId
+                    groupId: data.groupId,
+                    groupName: data.groupName
                 });
                 return;
             } catch (error) {
@@ -604,6 +615,7 @@ export async function handleCallAnswer(data) {
                 sendWebSocketMessage({
                     type: 'group-call-offer',
                     groupId: currentCall.groupId,
+                    groupName: currentCall.groupName,
                     to: data.userId,
                     userId: localStorage.getItem('userId'),
                     sender_username: localStorage.getItem('username'),
@@ -643,6 +655,7 @@ export async function handleGroupCallJoin(data) {
             sendWebSocketMessage({
                 type: 'group-call-offer',
                 groupId: currentCall.groupId,
+                groupName: currentCall.groupName,
                 to: data.userId,
                 userId: localStorage.getItem('userId'),
                 sender_username: localStorage.getItem('username'),
@@ -658,6 +671,7 @@ export async function handleGroupCallJoin(data) {
             sendWebSocketMessage({
                 type: 'group-call-offer',
                 groupId: currentCall.groupId,
+                groupName: currentCall.groupName,
                 to: data.userId,
                 userId: localStorage.getItem('userId'),
                 sender_username: localStorage.getItem('username'),
@@ -666,6 +680,49 @@ export async function handleGroupCallJoin(data) {
             });
         } catch (error) {
         }
+    }
+}
+
+export async function joinOngoingGroupCall(groupId, groupName, callInfo) {
+    try {
+        const confirmJoin = confirm(`Join the ongoing call in "${groupName}"?`);
+        if (!confirmJoin) return;
+
+        const isVideoCall = callInfo.isVideo || false;
+        
+        const stream = await getLocalMedia(isVideoCall)
+
+        if (!stream)  return;
+    
+        const localUserId = localStorage.getItem('userId');
+        const localUsername = localStorage.getItem('username');
+
+        currentCall.groupId = groupId;
+        currentCall.groupName = groupName;
+        currentCall.isVideo = isVideoCall;
+        currentCall.callState = 'active';
+        
+        if (!currentCall.participants[localUserId]) {
+            currentCall.participants[localUserId] = {
+                username: localUsername,
+                stream: stream,
+                elementId: 'localVideoModal'
+            };
+            currentCall.activeParticipants.push(localUserId);    
+        }
+        
+        updateCallState('active');
+
+        sendWebSocketMessage({
+            type: 'group-call-join',
+            groupId: groupId,
+            userId: localUserId,
+            sender_username: localUsername,
+            isVideo: isVideoCall
+        });
+        
+    } catch (error) {
+        error
     }
 }
 
@@ -950,6 +1007,15 @@ export function handleCallEnded(data) {
 export function handleGroupCallBusy(data) {
     console.log(`📞 ${data.sender_username} is busy for group call`);
 }
+
+export function handleOngoingGroupCalls(calls) {
+    if (calls && calls.length > 0) {
+        if (typeof window.showOngoingCallsNotification === 'function') {
+            window.showOngoingCallsNotification(calls);
+        }
+    }
+}
+
 if (acceptCallButton) acceptCallButton.addEventListener('click', acceptCall);
 if (rejectCallButton) rejectCallButton.addEventListener('click', rejectCall);
 if (endCallButtonModal) endCallButtonModal.addEventListener('click', endCall);

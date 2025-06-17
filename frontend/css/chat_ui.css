@@ -781,6 +781,16 @@ header p {
     display: none;
 }
 
+#ongoingCallsNotification .joinCallBtn:hover {
+    background: #218838 !important;
+    transform: scale(1.05);
+    transition: all 0.2s ease;
+}
+
+#ongoingCallsNotification {
+    animation: slideInRight 0.3s ease-out;
+}
+
 
 
 @media screen and (max-width: 768px) {
@@ -964,6 +974,17 @@ header p {
     100% {
         opacity: 1;
         transform: scale(1);
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
     }
 }
 

@@ -2,9 +2,9 @@ let socket;
 let currentUserId;
 const WS_BASE_URL = 'wss://192.168.43.122:8000';
 import { displayMessage } from "./chat_handler.js";
-import { 
-    handleIncomingCallOffer, 
-    handleCallAnswer, 
+import {
+    handleIncomingCallOffer,
+    handleCallAnswer,
     handleCallRejected,
     handleCallEnded,
     handleCallBusy,
@@ -13,6 +13,7 @@ import {
     handleGroupCallLeave,
     handleGroupCallEnded,
     handleGroupCallBusy,
+    handleOngoingGroupCalls,
     handleGroupCallStart
 } from './call_handler.js';
 
@@ -23,15 +24,15 @@ export function initWebSocket(userId) {
     }
 
     if (socket && socket.readyState === WebSocket.OPEN) {
-return;
+        return;
     }
     socket = new WebSocket(`${WS_BASE_URL}/ws/${userId}`);
 
     socket.onopen = () => {
-const username = localStorage.getItem('username');
-        socket.send(JSON.stringify({ 
-            type: 'join', 
-            userId: userId, 
+        const username = localStorage.getItem('username');
+        socket.send(JSON.stringify({
+            type: 'join',
+            userId: userId,
             username: username
         }));
     };
@@ -43,20 +44,18 @@ const username = localStorage.getItem('username');
         switch (message.type) {
             case 'chat_message':
                 if (typeof displayMessage === 'function') {
-                     displayMessage(message);
-                } else {
-}
+                    displayMessage(message);
+                }
                 break;
             case 'group_message':
                 if (typeof displayMessage === 'function') {
-                     displayMessage(message, false, 'group');
-                } else {
-}
+                    displayMessage(message, false, 'group');
+                }
                 break;
             case 'user_joined':
-break;
+                break;
             case 'user_left':
-break;
+                break;
             case 'call_offer':
                 handleIncomingCallOffer(message);
                 break;
@@ -78,7 +77,7 @@ break;
             case 'group-call-start':
                 handleGroupCallStart(message);
                 break;
-            case 'group-call-offer': 
+            case 'group-call-offer':
                 handleIncomingCallOffer(message);
                 break;
             case 'group-call-answer':
@@ -102,19 +101,22 @@ break;
             case 'group-call-busy':
                 handleGroupCallBusy(message);
                 break;
+            case 'ongoing-group-calls':
+                handleOngoingGroupCalls(message.calls);
+                break;
             case 'error':
-alert(`Server error: ${message.detail}`);
+                alert(`Server error: ${message.detail}`);
                 break;
 
             default:
-}
+        }
     };
 
     socket.onclose = (event) => {
-};
+    };
 
     socket.onerror = (error) => {
-};
+    };
 }
 
 export function sendWebSocketMessage(message) {
@@ -128,7 +130,7 @@ export function sendWebSocketMessage(message) {
         }
         socket.send(JSON.stringify(message));
     } else {
-}
+    }
 }
 
 export function closeWebSocket() {

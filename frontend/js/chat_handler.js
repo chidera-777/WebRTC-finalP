@@ -694,18 +694,28 @@ if (addUserToGroupButton) {
         if (addUserToGroupResults) addUserToGroupResults.textContent = 'Searching and adding...';
 
         try {
-            const searchResponse = await fetch(`${API_BASE_URL}/contacts/search?query=${encodeURIComponent(usernameToAdd)}`, {
+            const searchResponse = await fetch(`${API_BASE_URL}/contacts/search?query=${encodeURIComponent(usernameToAdd)}&for_group=true`, {
                 headers: { 'Authorization': `Bearer ${token}`, 'Accept': 'application/json' }
             });
-            if (!searchResponse.ok) throw new Error('Failed to search for user.');
+            
+            if (!searchResponse.ok) {
+                const errorData = await searchResponse.json().catch(() => null);
+                throw new Error(errorData?.detail || `Search failed with status: ${searchResponse.status}`);
+            }
+
             const users = await searchResponse.json();
             if (users.length === 0) {
                 if (addUserToGroupResults) addUserToGroupResults.textContent = `User '${usernameToAdd}' not found.`;
                 return;
             }
-            const userToAdd = users.find(u => u.username.toLowerCase() === usernameToAdd.toLowerCase());
+
+            let userToAdd = users.find(u => u.username === usernameToAdd);
             if (!userToAdd) {
-                if (addUserToGroupResults) addUserToGroupResults.textContent = `User '${usernameToAdd}' not found (exact match).`;
+                userToAdd = users.find(u => u.username.toLowerCase() === usernameToAdd.toLowerCase());
+            }
+
+            if (!userToAdd) {
+                if (addUserToGroupResults) addUserToGroupResults.textContent = `User '${usernameToAdd}' not found. Available users: ${users.map(u => u.username).join(', ')}`;
                 return;
             }
 
@@ -715,15 +725,15 @@ if (addUserToGroupButton) {
                 body: JSON.stringify({ user_id: userToAdd.id, role: 'member' })
             });
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Failed to add member.');
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.detail || `Failed to add member. Status: ${response.status}`);
             }
-            await response.json();
+
             if (addUserToGroupResults) addUserToGroupResults.textContent = `${usernameToAdd} added successfully.`;
             addUserToGroupInput.value = '';
             await loadGroupDetailsForSettings(currentActiveGroupId);
         } catch (error) {
-            if (addUserToGroupResults) addUserToGroupResults.textContent = `Error: ${error.message}`;
+            if (addUserToGroupResults) addUserToGroupResults.textContent = `${error.message}`;
         }
     });
 }
@@ -920,6 +930,10 @@ export function getCurrentActiveGroupId() {
     return currentActiveGroupId;
 }
 
+export function getCurrentActiveGroupName() {
+    return currentActiveGroupName;
+}
+
 function handleMobileView() {
     if (window.innerWidth <= 768) {
         if (!document.body.classList.contains('mobile-chat-view-active')) {
@@ -934,6 +948,114 @@ function handleMobileView() {
         if (chatListPanel) chatListPanel.style.transform = '';
         if (activeChatPanel) activeChatPanel.style.transform = '';
     }
+}
+
+export function showOngoingCallsNotification(ongoingCalls) {
+    const existingNotification = document.getElementById('ongoingCallsNotification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+
+    // Create notification container
+    const notification = document.createElement('div');
+    notification.id = 'ongoingCallsNotification';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 1000;
+        max-width: 350px;
+        font-family: Arial, sans-serif;
+    `;
+
+    const header = document.createElement('div');
+    header.style.cssText = `
+        font-weight: bold;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    `;
+    header.innerHTML = `
+        <span>📞 Ongoing Group Calls</span>
+        <button id="closeOngoingCalls" style="
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+        ">&times;</button>
+    `;
+
+    notification.appendChild(header);
+    ongoingCalls.forEach(call => {
+        const callItem = document.createElement('div');
+        callItem.style.cssText = `
+            background: rgba(255,255,255,0.1);
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+
+        callItem.innerHTML = `
+            <div>
+                <div style="font-weight: bold;">${call.groupName}</div>
+                <div style="font-size: 12px; opacity: 0.8;">
+                    ${call.participantCount} participant${call.participantCount !== 1 ? 's' : ''}
+                </div>
+            </div>
+            <button class="joinCallBtn" data-group-id="${call.groupId}" data-group-name="${call.groupName}" style="
+                background: #28a745;
+                color: white;
+                border: none;
+                margin-left: 10px;
+                padding: 8px 15px;
+                border-radius: 5px;
+                cursor: pointer;
+                font-size: 12px;
+                font-weight: bold;
+            ">Join Call</button>
+        `;
+
+        notification.appendChild(callItem);
+    });
+    document.body.appendChild(notification);
+    document.getElementById('closeOngoingCalls').addEventListener('click', () => {
+        notification.remove();
+    });
+
+    document.querySelectorAll('.joinCallBtn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const groupId = parseInt(e.target.dataset.groupId);
+            const groupName = e.target.dataset.groupName;
+            const callInfo = ongoingCalls.find(call => call.groupId === groupId);
+            if (!callInfo) {
+                return;
+            }
+
+            import("./call_handler.js").then(({joinOngoingGroupCall}) => {
+                joinOngoingGroupCall(groupId, groupName, callInfo);
+            });
+            notification.remove();
+        });
+    });
+
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 30000);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -962,3 +1084,5 @@ document.addEventListener('DOMContentLoaded', () => {
     handleMobileView();
     window.addEventListener('resize', handleMobileView);
 });
+
+window.showOngoingCallsNotification = showOngoingCallsNotification;

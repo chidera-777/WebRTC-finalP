@@ -203,7 +203,7 @@
     <script type="module" src="js/call_handler.js"></script>
 
     <script type="module">
-        import { searchUsers, addFriend, loadFriends, deleteFriend, sendMessage, displayMessage, getActiveChatPartnerId, getActiveChatPartnerUsername, getCurrentChatType, getCurrentActiveGroupId, getActiveGroupMembers } from './js/chat_handler.js';
+        import { searchUsers, addFriend, loadFriends, deleteFriend, sendMessage, displayMessage, getActiveChatPartnerId, getActiveChatPartnerUsername, getCurrentChatType, getCurrentActiveGroupId, getCurrentActiveGroupName, getActiveGroupMembers } from './js/chat_handler.js';
         import { initWebSocket, sendWebSocketMessage, closeWebSocket } from './js/websocket_client.js';
         import { initiateCall } from './js/call_handler.js';
 
@@ -280,6 +280,7 @@
                 audioCallButton.addEventListener('click', async () => {
                     const currentChatType = getCurrentChatType();
                     const currentActiveGroupId = getCurrentActiveGroupId();
+                    const currentActiveGroupName = getCurrentActiveGroupName();
                     if (currentChatType === 'group') {
                         const groupMembers = await getActiveGroupMembers(currentActiveGroupId);
                         if (groupMembers && groupMembers.length > 0) {
@@ -289,6 +290,7 @@
                             if (membersToCall.length > 0) {
                                 initiateCall({
                                     groupId: currentActiveGroupId,
+                                    groupName: currentActiveGroupName,
                                     recipients: membersToCall,
                                 }, username, false);
                             } else {
@@ -314,6 +316,7 @@
                 videoCallButton.addEventListener('click', async () => {
                     const currentChatType = getCurrentChatType();
                     const currentActiveGroupId = getCurrentActiveGroupId();
+                    const currentActiveGroupName = getCurrentActiveGroupName();
                     if (currentChatType === 'group') {
                         const groupMembers = await getActiveGroupMembers(currentActiveGroupId);
                         if (groupMembers && groupMembers.length > 0) {
@@ -322,6 +325,7 @@
                             if (membersToCall.length > 0) {
                                 initiateCall({
                                     groupId: currentActiveGroupId,
+                                    groupName: currentActiveGroupName,
                                     recipients: membersToCall,
                                 }, username, true);
                             } else {

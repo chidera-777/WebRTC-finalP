@@ -7,7 +7,9 @@ from ..db import models
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[int, WebSocket] = {}
-        self.active_group_calls: Dict[int, List[int]] = {}  
+        self.active_group_calls: Dict[int, List[int]] = {} 
+        self.group_call_types: Dict[int, bool] = {}
+        
     async def connect(self, websocket: WebSocket, user_id: int):
         await websocket.accept()
         self.active_connections[user_id] = websocket
@@ -58,13 +60,17 @@ class ConnectionManager:
                     self.disconnect(member.user_id)
 
         
-    async def start_group_call(self, group_id: int, initiator_user_id: int):
-        """Initialize a group call with the initiator"""
+    async def start_group_call(self, group_id: int, user_id: int, is_video: bool = False):
+        """Start a group call and track its type"""
         if group_id not in self.active_group_calls:
             self.active_group_calls[group_id] = []
-        
-        if initiator_user_id not in self.active_group_calls[group_id]:
-            self.active_group_calls[group_id].append(initiator_user_id)
+        if user_id not in self.active_group_calls[group_id]:
+            self.active_group_calls[group_id].append(user_id)
+        self.group_call_types[group_id] = is_video  # Store call type
+        return list(self.active_group_calls[group_id])
+            
+    def get_group_call_type(self, group_id: int) -> bool:
+        return self.group_call_types.get(group_id, False)
 
     async def join_group_call(self, group_id: int, user_id: int):
         """Add a user to an active group call"""
@@ -82,6 +88,8 @@ class ConnectionManager:
             
             if not self.active_group_calls[group_id]:
                 del self.active_group_calls[group_id]
+                if group_id in self.group_call_types:
+                    del self.group_call_types[group_id]
                 return "ended"
             else:
                 return "left"
@@ -120,5 +128,26 @@ class ConnectionManager:
     def get_group_call_count(self, group_id: int) -> int:
         """Get number of participants in a group call"""
         return len(self.active_group_calls.get(group_id, []))
+    
+    def is_group_call_active(self, group_id: int) -> bool:
+        """Check if a group call is currently active"""
+        return group_id in self.active_group_calls and len(self.active_group_calls[group_id]) > 0
+
+    def get_group_call_participants(self, group_id: int) -> list:
+        """Get list of participants in a group call"""
+        return list(self.active_group_calls.get(group_id, []))
+
+    async def join_ongoing_group_call(self, group_id: int, user_id: int):
+        """Allow user to join an ongoing group call"""
+        if not self.is_group_call_active(group_id):
+            return False
+       
+        if group_id not in self.active_group_calls:
+            self.active_group_calls[group_id] = []
+        
+        if user_id not in self.active_group_calls[group_id]:
+            self.active_group_calls[group_id].append(user_id)
+            return True
+        return False
 
 manager = ConnectionManager()

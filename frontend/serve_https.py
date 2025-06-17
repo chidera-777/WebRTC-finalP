@@ -3,7 +3,7 @@ import ssl
 import os
 
 SERVER_ADDRESS = '0.0.0.0'
-SERVER_PORT = 8080
+SERVER_PORT = 5500
 
 KEY_FILE = '../backend/key.pem'
 CERT_FILE = '../backend/cert.pem'

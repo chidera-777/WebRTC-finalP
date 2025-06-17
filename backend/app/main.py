@@ -26,6 +26,40 @@ app.include_router(messages_router.router)
 app.include_router(group_router.router)
 
 
+async def notify_user_of_ongoing_calls(db: Session, user_id: int):
+    """Notify user of ongoing group calls in their groups when they connect"""
+    try:
+        user_groups = db.query(models.GroupMember).filter(
+            models.GroupMember.user_id == user_id
+        ).all()
+        
+        ongoing_calls = []
+        for group_membership in user_groups:
+            group_id = group_membership.group_id
+            if manager.is_group_call_active(group_id):
+                group = db.query(models.Group).filter(models.Group.id == group_id).first()
+                if group:
+                    participants = manager.get_group_call_participants(group_id)
+                    call_info = {
+                        'groupId': group_id,
+                        'groupName': group.name,
+                        'participants': participants,
+                        'participantCount': len(participants),
+                        'isVideo': manager.get_group_call_type(group_id)
+                    }
+                    ongoing_calls.append(call_info)
+        
+        if ongoing_calls:
+            notification = {
+                'type': 'ongoing-group-calls',
+                'calls': ongoing_calls
+            }
+            await manager.send_personal_message(notification, user_id)
+            
+    except Exception as e:
+        print(f"Error notifying user {user_id} of ongoing calls: {e}")
+        
+
 @app.get("/")
 def read_root():
     return {"message": "WebRTC Signaling Server is running"}
@@ -102,11 +136,12 @@ async def websocket_endpoint(websocket: WebSocket, user_id_str: str, db: Session
                         await manager.send_personal_message({"type":"error", "detail": f"You are not a member of group {group_id}."}, user_id)
                         continue
                     
-                    message_data['groupId'] = group_id                     
+                    message_data['groupId'] = group_id               
                     message_data['userId'] = user_id                     
                     message_data['sender_username'] = username_for_log 
+                    is_video = message_data.get('isVideo', False)
                     if msg_type == "group-call-start":
-                        await manager.start_group_call(group_id, user_id)
+                        await manager.start_group_call(group_id, user_id, is_video)
     
                         group_members = db.query(models.GroupMember).filter(
                             models.GroupMember.group_id == group_id,
@@ -118,6 +153,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id_str: str, db: Session
                             'userId': user_id,
                             'sender_username': username_for_log,
                             'groupId': group_id,
+                            'groupName': message_data.get('groupName'),
                             'isVideo': message_data.get('isVideo', False),
                             'recipients': message_data.get('recipients', [])
                         }
@@ -134,6 +170,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id_str: str, db: Session
                             'userId': user_id,
                             'sender_username': username_for_log,
                             'groupId': group_id,
+                            'groupName': message_data.get('groupName'),
                             'isVideo': message_data.get('isVideo', False),
                             'activeParticipants': active_participants,
                         }
