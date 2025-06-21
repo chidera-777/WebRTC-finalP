@@ -795,24 +795,61 @@ export function addRemoteStream(userId, stream, username, groupId, isVideo) {
     wrapper.classList.add('participant-wrapper');
     
     const isOneOnOne = !groupId;
-    wrapper.style.cssText = `
-        position: relative;
-        margin: 5px;
-        border-radius: 8px;
-        overflow: hidden;
-        background: #333;
-        min-width: ${isOneOnOne ? '200px' : '150px'};
-        min-height: ${isOneOnOne ? '150px' : '100px'};
-        ${isOneOnOne ? 'max-width: 300px; max-height: 220px;' : ''}
-        border: 2px solid #34495e;
-        ${isOneOnOne ? 'flex: 1;' : ''}
-    `;
-
-    if (remoteStreamsContainer) {
-        remoteStreamsContainer.appendChild(wrapper);
+    
+    // Apply grid-friendly styling for video streams
+    if (isVideo) {
+        wrapper.style.cssText = `
+            position: relative;
+            margin: 5px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #333;
+            min-width: ${isOneOnOne ? '200px' : '150px'};
+            min-height: ${isOneOnOne ? '150px' : '100px'};
+            ${isOneOnOne ? 'max-width: 300px; max-height: 220px;' : ''}
+            border: 2px solid #34495e;
+            ${isOneOnOne ? 'flex: 1;' : ''}
+            aspect-ratio: 4/3;
+        `;
+        
+        remoteStreamsContainer.style.cssText = `
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(${isOneOnOne ? '200px' : '150px'}, 1fr));
+            gap: 10px;
+            padding: 10px;
+            max-height: 70vh;
+            overflow-y: auto;
+            align-items: center;
+            justify-items: center;
+        `;
     } else {
-        return;
+        // Keep existing styling for audio streams
+        wrapper.style.cssText = `
+            position: relative;
+            margin: 5px;
+            border-radius: 8px;
+            overflow: hidden;
+            background: #333;
+            min-width: ${isOneOnOne ? '200px' : '150px'};
+            min-height: ${isOneOnOne ? '150px' : '100px'};
+            ${isOneOnOne ? 'max-width: 300px; max-height: 220px;' : ''}
+            border: 2px solid #34495e;
+            ${isOneOnOne ? 'flex: 1;' : ''}
+        `;
+        
+        remoteStreamsContainer.style.cssText = `
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 10px;
+            max-height: 70vh;
+            overflow-y: auto;
+            align-items: center;
+            justify-content: center;
+        `;
     }
+
+    remoteStreamsContainer.appendChild(wrapper);
 
     const nameOverlay = document.createElement('div');
     nameOverlay.classList.add('participant-name-overlay');
