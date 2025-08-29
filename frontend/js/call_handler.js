@@ -795,8 +795,6 @@ export function addRemoteStream(userId, stream, username, groupId, isVideo) {
     wrapper.classList.add('participant-wrapper');
     
     const isOneOnOne = !groupId;
-    
-    // Apply grid-friendly styling for video streams
     if (isVideo) {
         wrapper.style.cssText = `
             position: relative;
@@ -823,7 +821,6 @@ export function addRemoteStream(userId, stream, username, groupId, isVideo) {
             justify-items: center;
         `;
     } else {
-        // Keep existing styling for audio streams
         wrapper.style.cssText = `
             position: relative;
             margin: 5px;
